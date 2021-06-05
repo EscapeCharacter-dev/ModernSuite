@@ -42,7 +42,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Operators
                 "=>" => new LargeArrowOperator(),
                 "?" => new WhatOperator(),
                 ":" => new ColonOperator(),
-                "::" => new CubeOperator(),
+                // "::" => new CubeOperator(), not used in 2021.06
                 ";" => new SemicolonOperator(),
                 "~" => new TildaOperator(),
                 "." => new DotOperator(),
