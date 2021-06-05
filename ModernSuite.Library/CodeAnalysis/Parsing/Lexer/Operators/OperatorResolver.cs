@@ -1,0 +1,54 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Operators
+{
+    public sealed partial class OperatorResolver : Resolver<Operator>
+    {
+        public override Operator Parse(string text)
+        {
+            return text switch
+            {
+                "+" => new PlusOperator(),
+                "-" => new MinusOperator(),
+                "*" => new StarOperator(),
+                "/" => new SlashOperator(),
+                "%" => new PercentageOperator(),
+                "&" => new AndOperator(),
+                "|" => new PipeOperator(),
+                "!" => new BangOperator(),
+                "^" => new HelmetOperator(),
+                "&&" => new AndsOperator(),
+                "||" => new PipesOperator(),
+                "<" => new ArrowLeftOperator(),
+                ">" => new ArrowRightOperator(),
+                ">>" => new ArrowsRightOperator(),
+                "<<" => new ArrowsLeftOperator(),
+                "=" => new EqualOperator(),
+                "==" => new EqualsOperator(),
+                "!=" => new BangEqualOperator(),
+                "++" => new PlusPlusOperator(),
+                "--" => new MinusMinusOperator(),
+                "(" => new ParenthesisOpenOperator(),
+                ")" => new ParenthesisClosedOperator(),
+                "[" => new SquareBracketOpenOperator(),
+                "]" => new SquareBracketClosedOperator(),
+                "{" => new BracketOpenOperator(),
+                "}" => new BracketClosedOperator(),
+                "->" => new ArrowOperator(),
+                "=>" => new LargeArrowOperator(),
+                "?" => new WhatOperator(),
+                ":" => new ColonOperator(),
+                "::" => new CubeOperator(),
+                ";" => new SemicolonOperator(),
+                "~" => new TildaOperator(),
+                "." => new DotOperator(),
+                "," => new CommaOperator(),
+                _ => null
+            };
+        }
+    }
+}
