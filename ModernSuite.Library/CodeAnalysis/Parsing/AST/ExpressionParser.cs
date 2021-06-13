@@ -48,6 +48,31 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return new LiteralASTNode { Lexable = asLiteral };
             }
+            else if (token is MinusOperator)
+            {
+                Position++;
+                return new NegativeOperation { Child = ParsePrimary() };
+            }
+            else if (token is ParenthesisOpenOperator)
+            {
+                Position++;
+                var tree = Parse();
+                if (Position >= Lexables.Count)
+                {
+                    Console.WriteLine("Missing closing parenthesis (premature EOL).");
+                    return null;
+                }
+                if (Lexables[Position] is ParenthesisClosedOperator)
+                {
+                    Position++;
+                    return new ParenthesizedOperation { Child = tree };
+                }
+                else
+                {
+                    Console.WriteLine("Missing closing parenthesis.");
+                    return null;
+                }
+            }
             else
             {
                 Console.WriteLine($"{token.GetType()} is not a valid literal value!");
@@ -62,17 +87,25 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             {
                 return left;
             }
-            var op = Lexables[Position];
-            if (op is not Operator)
+            if (Lexables[Position] is AdditiveOperator)
             {
-                Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
-                return null;
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Lexables[Position];
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseAdditive();
+                left = op is PlusOperator ? new AdditionOperation { Left = left, Right = right } :
+                    op is MinusOperator ? new SubtractionOperation { Left = left, Right = right } :
+                    null;
             }
-            Position++;
-            var right = ParseFactor();
-            return op is PlusOperator ?
-                   new AdditionOperation { Left = left, Right = right } : op is MinusOperator ?
-                   new SubtractionOperation { Left = left, Right = right } : null;
+            return left;
         }
 
         private ASTNode ParseFactor()
@@ -82,18 +115,23 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             {
                 return left;
             }
-            var op = Lexables[Position];
-            if (op is not Operator)
+            
+            if (Lexables[Position] is FactorialOperator)
             {
-                Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
-                return null;
+                var op = Lexables[Position];
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseFactor();
+                left = op is StarOperator ? new MultiplicationOperation { Left = left, Right = right } :
+                    op is SlashOperator ? new DivisionOperation { Left = left, Right = right } :
+                    op is PercentageOperator ? new RemainderOperation { Left = left, Right = right } :
+                    null;
             }
-            Position++;
-            var right = ParsePrimary();
-            return op is StarOperator ?
-                   new MultiplicationOperation { Left = left, Right = right } : op is SlashOperator ?
-                   new DivisionOperation { Left = left, Right = right } : op is PercentageOperator ?
-                   new RemainderOperation { Left = left, Right = right } : null;
+            return left;
         }
 
         public ASTNode Parse()

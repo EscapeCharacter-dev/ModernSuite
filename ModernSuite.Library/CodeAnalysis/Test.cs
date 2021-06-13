@@ -34,6 +34,12 @@ namespace ModernSuite.Library.CodeAnalysis
                 return (long)Evaluate(m.Left) * (long)Evaluate(m.Right);
             else if (node is DivisionOperation d)
                 return (long)Evaluate(d.Left) / (long)Evaluate(d.Right);
+            else if (node is RemainderOperation r)
+                return (long)Evaluate(r.Left) % (long)Evaluate(r.Right);
+            else if (node is NegativeOperation n)
+                return -(long)Evaluate(n.Child);
+            else if (node is ParenthesizedOperation p)
+                return (long)Evaluate(p.Child);
             else
                 return null;
         }
