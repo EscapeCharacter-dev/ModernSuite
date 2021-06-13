@@ -41,7 +41,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer
             if (!IsCurrentAnIdentifer && Current != '\0' && !char.IsWhiteSpace(Current))
             {
                 char old = Current;
-                while (Current == old && Current != '\0' || (old == '-' && Current == '>') || (old == '=' && Current == '>'))
+                while (Current == old && Current != '\0' || (old == '-' && Current == '>') || (old == '=' && Current == '>')
+                    || ((old == '<' || old == '>' || old == '!') && Current == '='))
                     Next();
                 var opSubstr = Text[start..Position].Trim();
                 return new OperatorResolver().Parse(opSubstr) as Lexable ?? new BadLexable(opSubstr);

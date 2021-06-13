@@ -17,6 +17,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         /// </summary>
         public List<Lexable> Lexables { get; } = new List<Lexable>();
         public int Position { get; private set; } = 0;
+        public Lexable Current => Position < Lexables.Count ? Lexables[Position] : null;
 
         public ExpressionParser(string text)
         {
@@ -41,7 +42,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 return null;
             }
 
-            var token = Lexables[Position];
+            var token = Current;
 
             if (token is Literal asLiteral)
             {
@@ -53,6 +54,16 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return new NegativeOperation { Child = ParsePrimary() };
             }
+            else if (token is BangOperator)
+            {
+                Position++;
+                return new LNotOperation { Child = ParsePrimary() };
+            }
+            else if (token is TildaOperator)
+            {
+                Position++;
+                return new BNotOperation { Child = ParsePrimary() };
+            }
             else if (token is ParenthesisOpenOperator)
             {
                 Position++;
@@ -62,7 +73,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Console.WriteLine("Missing closing parenthesis (premature EOL).");
                     return null;
                 }
-                if (Lexables[Position] is ParenthesisClosedOperator)
+                if (Current is ParenthesisClosedOperator)
                 {
                     Position++;
                     return new ParenthesizedOperation { Child = tree };
@@ -80,34 +91,6 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             }
         }
 
-        private ASTNode ParseAdditive()
-        {
-            var left = ParseFactor();
-            if (Position >= Lexables.Count)
-            {
-                return left;
-            }
-            if (Lexables[Position] is AdditiveOperator)
-            {
-                if (Position >= Lexables.Count)
-                {
-                    return left;
-                }
-                var op = Lexables[Position];
-                if (op is not Operator)
-                {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
-                    return null;
-                }
-                Position++;
-                var right = ParseAdditive();
-                left = op is PlusOperator ? new AdditionOperation { Left = left, Right = right } :
-                    op is MinusOperator ? new SubtractionOperation { Left = left, Right = right } :
-                    null;
-            }
-            return left;
-        }
-
         private ASTNode ParseFactor()
         {
             var left = ParsePrimary();
@@ -115,10 +98,10 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             {
                 return left;
             }
-            
-            if (Lexables[Position] is FactorialOperator)
+
+            while (Current is FactorialOperator)
             {
-                var op = Lexables[Position];
+                var op = Current;
                 if (op is not Operator)
                 {
                     Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
@@ -134,9 +117,96 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             return left;
         }
 
+        private ASTNode ParseAdditive()
+        {
+            var left = ParseFactor();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is AdditiveOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseAdditive();
+                left = op is PlusOperator ? new AdditionOperation { Left = left, Right = right } :
+                    op is MinusOperator ? new SubtractionOperation { Left = left, Right = right } :
+                    null;
+            }
+            return left;
+        }
+
+        private ASTNode ParseShifts()
+        {
+            var left = ParseAdditive();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is ArrowsLeftOperator || Current is ArrowsRightOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseShifts();
+                left = op is ArrowsLeftOperator ? new BinaryLeftShiftOperation { Left = left, Right = right } :
+                    op is ArrowsRightOperator ? new BinaryRightShiftOperation { Left = left, Right = right } :
+                    null;
+            }
+            return left;
+        }
+
+        private ASTNode ParseRelationals()
+        {
+            var left = ParseShifts();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is ArrowLeftOperator || Current is ArrowRightOperator ||
+                   Current is ArrowEqualLeftOperator || Current is ArrowEqualRightOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseRelationals();
+                left = op is ArrowLeftOperator ? new LowerOperation { Left = left, Right = right } :
+                    op is ArrowRightOperator ? new GreaterOperation { Left = left, Right = right } :
+                    op is ArrowEqualLeftOperator ? new LowerEqualOperation { Left = left, Right = right } :
+                    op is ArrowEqualRightOperator ? new GreaterEqualOperation { Left = left, Right = right } :
+                    null;
+            }
+            return left;
+        }
+
         public ASTNode Parse()
         {
-            return ParseAdditive();
+            return ParseRelationals();
         }
     }
 }
