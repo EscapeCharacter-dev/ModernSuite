@@ -43,7 +43,7 @@ namespace ModernSuite.Library.CodeAnalysis
             else if (node is BNotOperation b)
                 return ~(long)Evaluate(b.Child);
             else if (node is ParenthesizedOperation p)
-                return (long)Evaluate(p.Child);
+                return Convert.ToInt64(Evaluate(p.Child));
             else if (node is BinaryLeftShiftOperation blso)
                 return (long)Evaluate(blso.Left) << Convert.ToInt32((long)Evaluate(blso.Right));
             else if (node is BinaryRightShiftOperation brso)
@@ -56,6 +56,10 @@ namespace ModernSuite.Library.CodeAnalysis
                 return (long)Evaluate(leo.Left) <= (long)Evaluate(leo.Right) ? 1 : 0;
             else if (node is GreaterEqualOperation geo)
                 return (long)Evaluate(geo.Left) >= (long)Evaluate(geo.Right) ? 1 : 0;
+            else if (node is EqualityOperation eo)
+                return (long)Evaluate(eo.Left) == (long)Evaluate(eo.Right) ? 1 : 0;
+            else if (node is NotEqualOperation neo)
+                return (long)Evaluate(neo.Left) != (long)Evaluate(neo.Right) ? 1 : 0;
             else
                 return null;
         }

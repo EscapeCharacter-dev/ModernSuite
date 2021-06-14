@@ -204,9 +204,37 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             return left;
         }
 
+        private ASTNode ParseEqualities()
+        {
+            var left = ParseRelationals();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is EqualsOperator || Current is BangEqualOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseEqualities();
+                left = op is EqualsOperator ? new EqualityOperation { Left = left, Right = right } :
+                    op is BangEqualOperator ? new NotEqualOperation { Left = left, Right = right } :
+                    null;
+            }
+            return left;
+        }
+
         public ASTNode Parse()
         {
-            return ParseRelationals();
+            return ParseEqualities();
         }
     }
 }
