@@ -89,6 +89,16 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return new UnaryPlusOperation { Child = ParsePrimary() };
             }
+            else if (token is AtOperator)
+            {
+                Position++;
+                return new AddressOfOperation { Child = ParsePrimary() };
+            }
+            else if (token is DollarOperator)
+            {
+                Position++;
+                return new ValueOfOperation { Child = ParsePrimary() };
+            }
             else
             {
                 Console.WriteLine($"{token.GetType()} is not a valid literal value!");

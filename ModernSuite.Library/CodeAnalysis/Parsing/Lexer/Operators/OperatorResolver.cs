@@ -49,6 +49,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Operators
                 "~" => new TildaOperator(),
                 "." => new DotOperator(),
                 "," => new CommaOperator(),
+                "@" => new AtOperator(),
+                "$" => new DollarOperator(),
                 _ => null
             };
         }

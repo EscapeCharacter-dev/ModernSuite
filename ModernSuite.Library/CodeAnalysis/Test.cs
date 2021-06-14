@@ -5,6 +5,7 @@ using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -72,6 +73,10 @@ namespace ModernSuite.Library.CodeAnalysis
                 return Convert.ToInt64(Evaluate(loo.Left)) != 0 || Convert.ToInt64(Evaluate(loo.Right)) != 0 ? 1 : 0;
             else if (node is UnaryPlusOperation upo)
                 return Convert.ToInt64(Evaluate(upo.Child));
+            else if (node is AddressOfOperation aoo)
+                return GCHandle.Alloc(Evaluate(aoo.Child), GCHandleType.Pinned).AddrOfPinnedObject().ToInt64();
+            else if (node is ValueOfOperation voo)
+                return Marshal.ReadInt64(new IntPtr(Convert.ToInt64(Evaluate(voo.Child))));
             else
                 return null;
         }
