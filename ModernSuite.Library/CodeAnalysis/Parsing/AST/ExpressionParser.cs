@@ -232,9 +232,139 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             return left;
         }
 
+        private ASTNode ParseBAnds()
+        {
+            var left = ParseEqualities();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is AndOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseBAnds();
+                left = new BAndOperation { Left = left, Right = right };
+            }
+            return left;
+        }
+
+        private ASTNode ParseBXors()
+        {
+            var left = ParseBAnds();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is HelmetOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseBXors();
+                left = new BXorOperation { Left = left, Right = right };
+            }
+            return left;
+        }
+
+        private ASTNode ParseBOrs()
+        {
+            var left = ParseBXors();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is PipeOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseBOrs();
+                left = new BOrOperation { Left = left, Right = right };
+            }
+            return left;
+        }
+
+        private ASTNode ParseLAnds()
+        {
+            var left = ParseBOrs();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is AndsOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseLAnds();
+                left = new LAndOperation { Left = left, Right = right };
+            }
+            return left;
+        }
+
+        private ASTNode ParseLOrs()
+        {
+            var left = ParseLAnds();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is PipesOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    return null;
+                }
+                Position++;
+                var right = ParseLOrs();
+                left = new LOrOperation { Left = left, Right = right };
+            }
+            return left;
+        }
+
         public ASTNode Parse()
         {
-            return ParseEqualities();
+            return ParseLOrs();
         }
     }
 }
