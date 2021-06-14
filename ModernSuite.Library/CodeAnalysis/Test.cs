@@ -70,6 +70,8 @@ namespace ModernSuite.Library.CodeAnalysis
                 return Convert.ToInt64(Evaluate(lao.Left)) != 0 && Convert.ToInt64(Evaluate(lao.Right)) != 0 ? 1 : 0;
             else if (node is LOrOperation loo)
                 return Convert.ToInt64(Evaluate(loo.Left)) != 0 || Convert.ToInt64(Evaluate(loo.Right)) != 0 ? 1 : 0;
+            else if (node is UnaryPlusOperation upo)
+                return Convert.ToInt64(Evaluate(upo.Child));
             else
                 return null;
         }

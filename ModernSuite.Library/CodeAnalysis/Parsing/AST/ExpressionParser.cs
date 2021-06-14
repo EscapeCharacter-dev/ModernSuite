@@ -84,6 +84,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     return null;
                 }
             }
+            else if (token is PlusOperator)
+            {
+                Position++;
+                return new UnaryPlusOperation { Child = ParsePrimary() };
+            }
             else
             {
                 Console.WriteLine($"{token.GetType()} is not a valid literal value!");
