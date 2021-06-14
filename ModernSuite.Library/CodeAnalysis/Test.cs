@@ -1,13 +1,8 @@
 ﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
-using ModernSuite.Library.CodeAnalysis.Parsing.Lexer;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ModernSuite.Library.CodeAnalysis
 {
@@ -77,6 +72,17 @@ namespace ModernSuite.Library.CodeAnalysis
                 return GCHandle.Alloc(Evaluate(aoo.Child), GCHandleType.Pinned).AddrOfPinnedObject().ToInt64();
             else if (node is ValueOfOperation voo)
                 return Marshal.ReadInt64(new IntPtr(Convert.ToInt64(Evaluate(voo.Child))));
+            else if (node is FunctionCallOperation fco)
+            {
+                if (fco.FuncName == "test")
+                {
+                    var total = 0L;
+                    foreach (var param in fco.Children)
+                        total += Convert.ToInt64(Evaluate(param));
+                    return total;
+                }
+                return 0;
+            }
             else
                 return null;
         }

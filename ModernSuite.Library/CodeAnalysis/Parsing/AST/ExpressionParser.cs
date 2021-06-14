@@ -1,5 +1,6 @@
 ﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer;
+using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Operators;
 using System;
@@ -18,6 +19,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         public List<Lexable> Lexables { get; } = new List<Lexable>();
         public int Position { get; private set; } = 0;
         public Lexable Current => Position < Lexables.Count ? Lexables[Position] : null;
+        public Lexable PeekNext => Position + 1 < Lexables.Count ? Lexables[Position + 1] : null;
 
         public ExpressionParser(string text)
         {
@@ -99,6 +101,24 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return new ValueOfOperation { Child = ParsePrimary() };
             }
+            else if (token is Identifier i)
+            {
+                if (PeekNext is ParenthesisOpenOperator)
+                {
+                    Position += 2;
+                    var parameters = new List<ASTNode>();
+                    while (Current is not ParenthesisClosedOperator)
+                    {
+                        parameters.Add(Parse());
+                        if (Current is not CommaOperator)
+                            break;
+                        Position++;
+                    }
+                    Position++;
+                    return new FunctionCallOperation(parameters) { FuncName = i.Representation };
+                }
+                return new IdentifierOperation { IdentName = i.Representation };
+            }
             else
             {
                 Console.WriteLine($"{token.GetType()} is not a valid literal value!");
@@ -136,15 +156,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         {
             var left = ParseFactor();
             if (Position >= Lexables.Count)
-            {
                 return left;
-            }
             while (Current is AdditiveOperator)
             {
                 if (Position >= Lexables.Count)
-                {
                     return left;
-                }
                 var op = Current;
                 if (op is not Operator)
                 {
@@ -164,15 +180,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         {
             var left = ParseAdditive();
             if (Position >= Lexables.Count)
-            {
                 return left;
-            }
             while (Current is ArrowsLeftOperator || Current is ArrowsRightOperator)
             {
                 if (Position >= Lexables.Count)
-                {
                     return left;
-                }
                 var op = Current;
                 if (op is not Operator)
                 {
@@ -192,16 +204,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         {
             var left = ParseShifts();
             if (Position >= Lexables.Count)
-            {
                 return left;
-            }
             while (Current is ArrowLeftOperator || Current is ArrowRightOperator ||
                    Current is ArrowEqualLeftOperator || Current is ArrowEqualRightOperator)
             {
                 if (Position >= Lexables.Count)
-                {
                     return left;
-                }
                 var op = Current;
                 if (op is not Operator)
                 {
@@ -223,15 +231,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         {
             var left = ParseRelationals();
             if (Position >= Lexables.Count)
-            {
                 return left;
-            }
             while (Current is EqualsOperator || Current is BangEqualOperator)
             {
                 if (Position >= Lexables.Count)
-                {
                     return left;
-                }
                 var op = Current;
                 if (op is not Operator)
                 {
@@ -251,15 +255,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         {
             var left = ParseEqualities();
             if (Position >= Lexables.Count)
-            {
                 return left;
-            }
             while (Current is AndOperator)
             {
                 if (Position >= Lexables.Count)
-                {
                     return left;
-                }
                 var op = Current;
                 if (op is not Operator)
                 {
@@ -277,15 +277,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         {
             var left = ParseBAnds();
             if (Position >= Lexables.Count)
-            {
                 return left;
-            }
             while (Current is HelmetOperator)
             {
                 if (Position >= Lexables.Count)
-                {
                     return left;
-                }
                 var op = Current;
                 if (op is not Operator)
                 {

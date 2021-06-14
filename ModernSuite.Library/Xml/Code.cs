@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ModernSuite.Library.Xml
+﻿namespace ModernSuite.Library.Xml
 {
     /// <summary>
     /// The assembly code goes here.

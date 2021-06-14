@@ -41,17 +41,26 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer
             if (!IsCurrentAnIdentifer && Current != '\0' && !char.IsWhiteSpace(Current))
             {
                 char old = Current;
-                while (Current == old && Current != '\0' || (old == '-' && Current == '>') || (old == '=' && Current == '>')
-                    || ((old == '<' || old == '>' || old == '!') && Current == '='))
+                if (Current == ',' || Current == '.' || Current == '(' || Current == ')' || Current == '[' ||
+                    Current == ']' || Current == '{' || Current == '}' || Current == ';' || Current == ':' ||
+                    Current == '@' || Current == '$' || Current == '~')
                     Next();
+                else
+                    while (Current == old && Current != '\0' ||
+                        (old == '-' && Current == '>') || (old == '=' && Current == '>')
+                        || ((old == '<' || old == '>' || old == '!') && Current == '='))
+                        Next();
                 var opSubstr = Text[start..Position].Trim();
-                return new OperatorResolver().Parse(opSubstr) as Lexable ?? new BadLexable(opSubstr);
+                var _token = new OperatorResolver().Parse(opSubstr) as Lexable ?? new BadLexable(opSubstr);
+                if (_token is BadLexable _badLexable)
+                    Diagnostics.Add($"Unexpected characters '{_badLexable.Representation}'");
+                return _token;
             }
 
             while (IsCurrentAnIdentifer)
                 Next();
             var substr = Text[start..Position].Trim();
-            var token = new LiteralResolver().Parse(substr) ?? new KeywordResolver().Parse(substr) as Lexable ?? new BadLexable(substr);
+            var token = new LiteralResolver().Parse(substr) ?? new KeywordResolver().Parse(substr) as Lexable ?? new Identifier(substr);
             if (token is BadLexable badLexable)
                 Diagnostics.Add($"Unexpected characters '{badLexable.Representation}'");
             return token;

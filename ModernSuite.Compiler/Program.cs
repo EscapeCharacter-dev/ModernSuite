@@ -1,5 +1,4 @@
 ﻿using ModernSuite.Library.CodeAnalysis;
-using System;
 
 namespace ModernSuite.Compiler
 {

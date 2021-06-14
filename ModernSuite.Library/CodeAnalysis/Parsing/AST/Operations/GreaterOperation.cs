@@ -2,6 +2,6 @@
 {
     public sealed class GreaterOperation : BinaryASTNode
     {
-        
+
     }
 }
