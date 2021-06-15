@@ -20,28 +20,11 @@ namespace ModernSuite.Library.CodeAnalysis
             while (true)
             {
                 var parser = new Parser(Console.ReadLine());
-                var gen = new Gen3AC();
                 var semantic = parser.Parse();
                 Console.WriteLine(Convert.ToInt64(Evaluate(semantic)));
-                //var operations = gen.Parse(new[] { semantic });
-                var ccode = "static void *__voidptr_storage;";
+                var ccode = "static void *__voidptr_storage;\n";
                 ccode += new GenC89().ParseStatements(semantic);
                 Console.WriteLine(ccode);
-                /*var module = new Module
-                {
-                    Code = operations,
-                    Debug = new Debug(),
-                    Name = "Test",
-                    Dependencies = Enumerable.Empty<Dependency>().ToArray(),
-                    Version = "1.0.0"
-                };
-                var serializer = new XmlSerializer(typeof(Module));
-                using (var streamWriter = new StringWriter())
-                {
-                    serializer.Serialize(streamWriter, module);
-                    streamWriter.Close();
-                    Console.WriteLine(streamWriter.ToString());
-                }*/
             }
         }
 

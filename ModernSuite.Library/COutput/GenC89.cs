@@ -1,6 +1,8 @@
 ﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST;
+using ModernSuite.Library.CodeAnalysis.Parsing.AST.Declarations;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements;
+using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -104,6 +106,70 @@ namespace ModernSuite.Library.COutput
                 return $"while({ParseExpression(ws.Expression)}){ParseStatements(ws.While)}";
             else if (semantic is DoWhileStatement dws)
                 return $"do {ParseStatements(dws.Code)}while({ParseExpression(dws.Expression)});";
+            else if (semantic is VariableDecl vdcl)
+            {
+                var strtype = "";
+                if (vdcl.Type == typeof(ByteKeyword))
+                    strtype = "char";
+                else if (vdcl.Type == typeof(SByteKeyword))
+                    strtype = "signed char";
+                else if (vdcl.Type == typeof(ShortKeyword))
+                    strtype = "short";
+                else if (vdcl.Type == typeof(UShortKeyword))
+                    strtype = "unsigned short";
+                else if (vdcl.Type == typeof(IntKeyword))
+                    strtype = "int";
+                else if (vdcl.Type == typeof(UIntKeyword))
+                    strtype = "unsigned";
+                else if (vdcl.Type == typeof(Least32Keyword))
+                    strtype = "long";
+                else if (vdcl.Type == typeof(ULeast32Keyword))
+                    strtype = "unsigned long";
+                else if (vdcl.Type == typeof(LongKeyword))
+                    strtype = "long long";
+                else if (vdcl.Type == typeof(ULongKeyword))
+                    strtype = "unsigned long long";
+                else if (vdcl.Type == typeof(SingleKeyword))
+                    strtype = "float";
+                else if (vdcl.Type == typeof(DoubleKeyword))
+                    strtype = "double";
+                else if (vdcl.Type == typeof(QuadKeyword))
+                    strtype = "long double";
+
+                return $"{strtype} {vdcl.Identifier}={(vdcl.InitVal != null ? ParseExpression(vdcl.InitVal) : "")};";
+            }
+            else if (semantic is ConstantDecl cd)
+            {
+                var strtype = "";
+                if (cd.Type == typeof(ByteKeyword))
+                    strtype = "char";
+                else if (cd.Type == typeof(SByteKeyword))
+                    strtype = "signed char";
+                else if (cd.Type == typeof(ShortKeyword))
+                    strtype = "short";
+                else if (cd.Type == typeof(UShortKeyword))
+                    strtype = "unsigned short";
+                else if (cd.Type == typeof(IntKeyword))
+                    strtype = "int";
+                else if (cd.Type == typeof(UIntKeyword))
+                    strtype = "unsigned";
+                else if (cd.Type == typeof(Least32Keyword))
+                    strtype = "long";
+                else if (cd.Type == typeof(ULeast32Keyword))
+                    strtype = "unsigned long";
+                else if (cd.Type == typeof(LongKeyword))
+                    strtype = "long long";
+                else if (cd.Type == typeof(ULongKeyword))
+                    strtype = "unsigned long long";
+                else if (cd.Type == typeof(SingleKeyword))
+                    strtype = "float";
+                else if (cd.Type == typeof(DoubleKeyword))
+                    strtype = "double";
+                else if (cd.Type == typeof(QuadKeyword))
+                    strtype = "long double";
+
+                return $"const {strtype} {cd.Identifier}={ParseExpression(cd.InitVal)};";
+            }
             else
                 return "";
         }

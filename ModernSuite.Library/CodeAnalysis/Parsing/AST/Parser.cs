@@ -1,4 +1,5 @@
-﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
+﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST.Declarations;
+using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords;
@@ -495,9 +496,119 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             }
         }
 
+        private Semantic ParseDeclaration()
+        {
+            if (Current is VarKeyword)
+            {
+                Position++;
+                if (Current is not Identifier)
+                {
+                    Console.WriteLine("Expected an identifier");
+                    return null;
+                }
+                var ident = Current as Identifier;
+                Position++;
+                if (Current is not ArrowOperator)
+                {
+                    Console.WriteLine("Expected '->'");
+                    return null;
+                }
+                Position++;
+                if (Current is not ByteKeyword &&
+                    Current is not SByteKeyword &&
+                    Current is not ShortKeyword &&
+                    Current is not UShortKeyword &&
+                    Current is not Least32Keyword &&
+                    Current is not ULeast32Keyword &&
+                    Current is not IntKeyword &&
+                    Current is not UIntKeyword &&
+                    Current is not LongKeyword &&
+                    Current is not ULongKeyword &&
+                    Current is not SingleKeyword &&
+                    Current is not DoubleKeyword &&
+                    Current is not QuadKeyword)
+                {
+                    Console.WriteLine("Expected a type");
+                    return null;
+                }
+                var type = Current;
+                Position++;
+                ASTNode ast_value = null;
+                if (Current is not EqualOperator && Current is SemicolonOperator)
+                    goto SkipAssign;
+                else if (Current is not SemicolonOperator && Current is not EqualOperator)
+                {
+                    Console.WriteLine($"Expected an equal or a semicolon, got {Current.GetType()}");
+                    return null;
+                }
+                Position++;
+
+                ast_value = ParseLOrs();
+            SkipAssign:
+                if (Current is not SemicolonOperator)
+                {
+                    Console.WriteLine("Expected a semicolon");
+                    return null;
+                }
+                return new VariableDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type.GetType() };
+            }
+            else if (Current is ConstKeyword)
+            {
+                Position++;
+                if (Current is not Identifier)
+                {
+                    Console.WriteLine("Expected an identifier");
+                    return null;
+                }
+                var ident = Current as Identifier;
+                Position++;
+                if (Current is not ArrowOperator)
+                {
+                    Console.WriteLine("Expected '->'");
+                    return null;
+                }
+                Position++;
+                if (Current is not ByteKeyword &&
+                    Current is not SByteKeyword &&
+                    Current is not ShortKeyword &&
+                    Current is not UShortKeyword &&
+                    Current is not Least32Keyword &&
+                    Current is not ULeast32Keyword &&
+                    Current is not IntKeyword &&
+                    Current is not UIntKeyword &&
+                    Current is not LongKeyword &&
+                    Current is not ULongKeyword &&
+                    Current is not SingleKeyword &&
+                    Current is not DoubleKeyword &&
+                    Current is not QuadKeyword)
+                {
+                    Console.WriteLine("Expected a type");
+                    return null;
+                }
+                var type = Current;
+                Position++;
+                if (Current is not EqualOperator)
+                {
+                    Console.WriteLine($"Expected an equal or a semicolon, got {Current.GetType()}");
+                    return null;
+                }
+                Position++;
+
+                var ast_value = ParseLOrs();
+                if (Current is not SemicolonOperator)
+                {
+                    Console.WriteLine("Expected a semicolon");
+                    return null;
+                }
+                return new ConstantDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type.GetType() };
+            }
+            else
+                return ParseStatement();
+        }
+
         public Semantic Parse()
         {
-            var semantic = ParseStatement();
+            var semantic = ParseDeclaration();
             return semantic;
         }
     }
