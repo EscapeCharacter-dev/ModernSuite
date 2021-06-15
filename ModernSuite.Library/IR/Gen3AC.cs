@@ -11,7 +11,7 @@ namespace ModernSuite.Library.IR
 {
     public sealed class Gen3AC
     {
-        private Operation SingleOperation(ASTNode node, int counter, out List<Operation> children)
+        private Operation SingleOperation(Semantic node, int counter, out List<Operation> children)
         {
             if (node is LiteralASTNode lan)
             {
@@ -459,7 +459,7 @@ namespace ModernSuite.Library.IR
                 return null;
             }
         }
-        public Operation[] Parse(ASTNode[] nodes)
+        public Operation[] Parse(Semantic[] nodes)
         {
             var opCounter = 0;
 

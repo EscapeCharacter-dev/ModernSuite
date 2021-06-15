@@ -1,17 +1,15 @@
 ﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
+using ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Operators;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
 {
-    public sealed class ExpressionParser
+    public sealed class Parser
     {
         /// <summary>
         /// The list of tokens.
@@ -21,7 +19,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         public Lexable Current => Position < Lexables.Count ? Lexables[Position] : null;
         public Lexable PeekNext => Position + 1 < Lexables.Count ? Lexables[Position + 1] : null;
 
-        public ExpressionParser(string text)
+        public Parser(string text)
         {
             var tokenizer = new Tokenizer(text);
 
@@ -69,7 +67,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             else if (token is ParenthesisOpenOperator)
             {
                 Position++;
-                var tree = Parse();
+                var tree = ParseLOrs();
                 if (Position >= Lexables.Count)
                 {
                     Console.WriteLine("Missing closing parenthesis (premature EOL).");
@@ -109,7 +107,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     var parameters = new List<ASTNode>();
                     while (Current is not ParenthesisClosedOperator)
                     {
-                        parameters.Add(Parse());
+                        parameters.Add(ParseLOrs());
                         if (Current is not CommaOperator)
                             break;
                         Position++;
@@ -374,9 +372,52 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             return left;
         }
 
-        public ASTNode Parse()
+        private Semantic ParseStatement()
         {
-            return ParseLOrs();
+            if (Current is IfKeyword)
+            {
+                Position++;
+                if (Current is ParenthesisOpenOperator)
+                {
+                    Position++;
+                    var expr = ParseLOrs();
+                    if (Current is not ParenthesisClosedOperator)
+                    {
+                        Console.WriteLine("Missing closing parenthesis in if statement");
+                        return null;
+                    }
+                    Position++;
+                    if (Current is not ColonOperator)
+                    {
+                        Console.WriteLine("Missing code in if statement");
+                        return null;
+                    }
+                    Position++;
+                    var code = Parse();
+                    Semantic else_code = null;
+                    if (Current is ElseKeyword)
+                    {
+                        Position++;
+                        if (Current is not ColonOperator)
+                        {
+                            Console.WriteLine("Missing code in else statement");
+                            return null;
+                        }
+                        Position++;
+                        else_code = Parse();
+                    }
+                    return new IfElseStatement { TrueCode = code, ElseCode = else_code, Expression = expr };
+                }
+                Console.WriteLine("Invalid if statement syntax");
+                return null;
+            }
+            else
+                return ParseLOrs();
+        }
+
+        public Semantic Parse()
+        {
+            return ParseStatement();
         }
     }
 }

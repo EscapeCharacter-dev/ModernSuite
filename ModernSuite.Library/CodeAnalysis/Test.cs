@@ -1,10 +1,10 @@
 ﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
+using ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using ModernSuite.Library.IR;
 using ModernSuite.Library.Xml;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -18,10 +18,12 @@ namespace ModernSuite.Library.CodeAnalysis
         {
             while (true)
             {
-                var parser = new ExpressionParser(Console.ReadLine());
+                var parser = new Parser(Console.ReadLine());
                 var gen = new Gen3AC();
-                var operations = gen.Parse(new[] { parser.Parse() });
-                var module = new Module
+                var semantic = parser.Parse();
+                //var operations = gen.Parse(new[] { semantic });
+                Console.WriteLine(Convert.ToInt64(Evaluate(semantic)));
+                /*var module = new Module
                 {
                     Code = operations,
                     Debug = new Debug(),
@@ -35,11 +37,11 @@ namespace ModernSuite.Library.CodeAnalysis
                     serializer.Serialize(streamWriter, module);
                     streamWriter.Close();
                     Console.WriteLine(streamWriter.ToString());
-                }
+                }*/
             }
         }
 
-        private object Evaluate(ASTNode node)
+        private object Evaluate(Semantic node)
         {
             if (node is LiteralASTNode l)
                 return (l.Lexable as Literal).Value;
@@ -106,6 +108,8 @@ namespace ModernSuite.Library.CodeAnalysis
             }
             else if (node is IdentifierOperation io)
                 return 0;
+            else if (node is IfElseStatement ies)
+                return Convert.ToInt64(Evaluate(ies.Expression)) != 0 ? Evaluate(ies.TrueCode) : Evaluate(ies.ElseCode);  
             else
                 return null;
         }
