@@ -2,7 +2,7 @@
 {
     public abstract class Literal : Lexable
     {
-        public override string Representation => "";
+        public override string Representation { get => Value.ToString(); }
         public abstract object Value { get; init; }
     }
 }

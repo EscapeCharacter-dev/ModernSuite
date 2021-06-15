@@ -1,8 +1,12 @@
 ﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
+using ModernSuite.Library.IR;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Xml.Serialization;
 
 namespace ModernSuite.Library.CodeAnalysis
 {
@@ -13,9 +17,16 @@ namespace ModernSuite.Library.CodeAnalysis
             while (true)
             {
                 var parser = new ExpressionParser(Console.ReadLine());
-                Console.WriteLine($"{Evaluate(parser.Parse())}");
+                var gen = new Gen3AC();
+                var operations = gen.Parse(new[] { parser.Parse() });
+                var serializer = new XmlSerializer(typeof(Operation[]));
+                using (var streamWriter = new StringWriter())
+                {
+                    serializer.Serialize(streamWriter, operations);
+                    streamWriter.Close();
+                    Console.WriteLine(streamWriter.ToString());
+                }
             }
-
         }
 
         private object Evaluate(ASTNode node)
@@ -83,6 +94,8 @@ namespace ModernSuite.Library.CodeAnalysis
                 }
                 return 0;
             }
+            else if (node is IdentifierOperation io)
+                return 0;
             else
                 return null;
         }
