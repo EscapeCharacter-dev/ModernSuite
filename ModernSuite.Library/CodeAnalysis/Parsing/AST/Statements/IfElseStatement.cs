@@ -19,6 +19,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements
                 yield return TrueCode;
                 yield return ElseCode;
             }
+
+            protected set
+            {
+                SubSemantics = value;
+            }
         }
     }
 }

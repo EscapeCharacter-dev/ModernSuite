@@ -6,14 +6,17 @@ using System.Threading.Tasks;
 
 namespace ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements
 {
-    public sealed class GotoStatement : Statement
+    public sealed class DoWhileStatement : Statement
     {
-        public ASTNode Objective { get; init; }
+        public ASTNode Expression { get; init; }
+        public Semantic Code { get; init; }
+
         public override IEnumerable<Semantic> SubSemantics
         {
             get
             {
-                yield return Objective;
+                yield return Expression;
+                yield return Code;
             }
             protected set
             {

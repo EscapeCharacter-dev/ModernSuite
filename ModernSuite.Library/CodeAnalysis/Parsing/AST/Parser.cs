@@ -387,22 +387,10 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                         return null;
                     }
                     Position++;
-                    if (Current is not ColonOperator)
-                    {
-                        Console.WriteLine("Missing code in if statement");
-                        return null;
-                    }
-                    Position++;
                     var code = Parse();
                     Semantic else_code = null;
                     if (Current is ElseKeyword)
                     {
-                        Position++;
-                        if (Current is not ColonOperator)
-                        {
-                            Console.WriteLine("Missing code in else statement");
-                            return null;
-                        }
                         Position++;
                         else_code = Parse();
                     }
@@ -420,15 +408,97 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Console.WriteLine("Invalid goto syntax");
                     return null;
                 }
+                if (Current is not SemicolonOperator)
+                {
+                    Console.WriteLine("Expected a semicolon");
+                    return null;
+                }
+                Position++;
                 return new GotoStatement { Objective = objective };
             }
+            else if (Current is WhileKeyword)
+            {
+                Position++;
+                if (Current is ParenthesisOpenOperator)
+                {
+                    Position++;
+                    var expr = ParseLOrs();
+                    if (Current is not ParenthesisClosedOperator)
+                    {
+                        Console.WriteLine("Missing closing parenthesis in if statement");
+                        return null;
+                    }
+                    Position++;
+                    var code = Parse();
+                    return new WhileStatement { Expression = expr, While = code };
+                }
+                Console.WriteLine("Invalid while statement syntax");
+                return null;
+            }
+            else if (Current is DoKeyword)
+            {
+                Position++;
+                var code = Parse();
+                if (Current is not WhileKeyword)
+                {
+                    Console.WriteLine("Invalid do...while statement syntax");
+                    return null;
+                }
+                Position++;
+                if (Current is not ParenthesisOpenOperator)
+                {
+                    Console.WriteLine("Invalid do...while statement syntax");
+                    return null;
+                }
+                Position++;
+                var expr = ParseLOrs();
+                if (Current is not ParenthesisClosedOperator)
+                {
+                    Console.WriteLine("Missing closing parenthesis in do...while statement");
+                    return null;
+                }
+                Position++;
+                if (Current is not SemicolonOperator)
+                {
+                    Console.WriteLine("Missing semicolon");
+                    return null;
+                }
+                return new DoWhileStatement { Expression = expr, Code = code };
+            }
+            else if (Current is BracketOpenOperator)
+            {
+                Position++;
+                var statements = new List<Semantic>();
+                while (Current is not BracketClosedOperator)
+                    if (Current is null)
+                        Console.WriteLine("expected matching closed bracket operator");
+                    else
+                        statements.Add(Parse());
+                Position++;
+                return new GroupStatement(statements);
+            }
+            else if (Current is SemicolonOperator)
+            {
+                Position++;
+                return new EmptyStatement();
+            }
             else
-                return ParseLOrs();
+            {
+                var expr = ParseLOrs();
+                if (Current is not SemicolonOperator)
+                {
+                    Console.WriteLine("Expected a semicolon");
+                    return null;
+                }
+                Position++;
+                return expr;
+            }
         }
 
         public Semantic Parse()
         {
-            return ParseStatement();
+            var semantic = ParseStatement();
+            return semantic;
         }
     }
 }

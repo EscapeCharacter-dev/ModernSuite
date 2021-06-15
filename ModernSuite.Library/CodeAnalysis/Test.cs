@@ -2,6 +2,7 @@
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
+using ModernSuite.Library.COutput;
 using ModernSuite.Library.IR;
 using ModernSuite.Library.Xml;
 using System;
@@ -21,8 +22,11 @@ namespace ModernSuite.Library.CodeAnalysis
                 var parser = new Parser(Console.ReadLine());
                 var gen = new Gen3AC();
                 var semantic = parser.Parse();
-                //var operations = gen.Parse(new[] { semantic });
                 Console.WriteLine(Convert.ToInt64(Evaluate(semantic)));
+                //var operations = gen.Parse(new[] { semantic });
+                var ccode = "static void *__voidptr_storage;";
+                ccode += new GenC89().ParseStatements(semantic);
+                Console.WriteLine(ccode);
                 /*var module = new Module
                 {
                     Code = operations,
@@ -43,6 +47,8 @@ namespace ModernSuite.Library.CodeAnalysis
 
         private object Evaluate(Semantic node)
         {
+            if (node is null)
+                return 0;
             if (node is LiteralASTNode l)
                 return (l.Lexable as Literal).Value;
             else if (node is AdditionOperation a)
@@ -112,6 +118,12 @@ namespace ModernSuite.Library.CodeAnalysis
                 return Convert.ToInt64(Evaluate(ies.Expression)) != 0 ? Evaluate(ies.TrueCode) : Evaluate(ies.ElseCode);
             else if (node is GotoStatement gs)
                 return 0xFF;
+            else if (node is GroupStatement grs)
+            {
+                foreach (var statement in grs.SubSemantics)
+                    Evaluate(statement);
+                return 0xFE;
+            }
             else
                 return null;
         }

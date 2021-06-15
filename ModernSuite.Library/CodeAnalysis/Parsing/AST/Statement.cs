@@ -11,6 +11,6 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
     /// </summary>
     public abstract class Statement : Semantic
     {
-        public abstract IEnumerable<Semantic> SubSemantics { get; }
+        public abstract IEnumerable<Semantic> SubSemantics { get; protected set; }
     }
 }

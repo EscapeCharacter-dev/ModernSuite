@@ -1,5 +1,6 @@
 ﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
+using ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -451,6 +452,34 @@ namespace ModernSuite.Library.IR
                     ResultIdentifier = $"{counter}",
                     Operator = "27",
                     FirstOperand = io.IdentName
+                };
+            }
+            else if (node is GotoStatement gs)
+            {
+                children = new List<Operation>();
+                var left = SingleOperation(gs.Objective, counter, out var more);
+                children.AddRange(more);
+                children.Add(left);
+                return new Operation
+                {
+                    ResultIdentifier = $"{counter + more.Count + 1}",
+                    Operator = "28",
+                    FirstOperand = left.ResultIdentifier
+                };
+            }
+            else if (node is IfElseStatement ies)
+            {
+                children = new List<Operation>();
+                var left = SingleOperation(ies.Expression, counter, out var more);
+                children.AddRange(more);
+                children.Add(left);
+                var code = new List<Operation>();
+                var if_true = SingleOperation(ies.TrueCode, counter + more.Count, out var if_true_more);
+                return new Operation
+                {
+                    ResultIdentifier = $"{counter + more.Count + 1}",
+                    Operator = "29",
+                    FirstOperand = left.ResultIdentifier
                 };
             }
             else
