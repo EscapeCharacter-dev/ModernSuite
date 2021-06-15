@@ -411,6 +411,17 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Console.WriteLine("Invalid if statement syntax");
                 return null;
             }
+            else if (Current is GotoKeyword)
+            {
+                Position++;
+                var objective = ParseLOrs();
+                if (objective is null)
+                {
+                    Console.WriteLine("Invalid goto syntax");
+                    return null;
+                }
+                return new GotoStatement { Objective = objective };
+            }
             else
                 return ParseLOrs();
         }

@@ -109,7 +109,9 @@ namespace ModernSuite.Library.CodeAnalysis
             else if (node is IdentifierOperation io)
                 return 0;
             else if (node is IfElseStatement ies)
-                return Convert.ToInt64(Evaluate(ies.Expression)) != 0 ? Evaluate(ies.TrueCode) : Evaluate(ies.ElseCode);  
+                return Convert.ToInt64(Evaluate(ies.Expression)) != 0 ? Evaluate(ies.TrueCode) : Evaluate(ies.ElseCode);
+            else if (node is GotoStatement gs)
+                return 0xFF;
             else
                 return null;
         }
