@@ -2,9 +2,11 @@
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using ModernSuite.Library.IR;
+using ModernSuite.Library.Xml;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Xml.Serialization;
 
@@ -19,10 +21,18 @@ namespace ModernSuite.Library.CodeAnalysis
                 var parser = new ExpressionParser(Console.ReadLine());
                 var gen = new Gen3AC();
                 var operations = gen.Parse(new[] { parser.Parse() });
-                var serializer = new XmlSerializer(typeof(Operation[]));
+                var module = new Module
+                {
+                    Code = operations,
+                    Debug = new Debug(),
+                    Name = "Test",
+                    Dependencies = Enumerable.Empty<Dependency>().ToArray(),
+                    Version = "1.0.0"
+                };
+                var serializer = new XmlSerializer(typeof(Module));
                 using (var streamWriter = new StringWriter())
                 {
-                    serializer.Serialize(streamWriter, operations);
+                    serializer.Serialize(streamWriter, module);
                     streamWriter.Close();
                     Console.WriteLine(streamWriter.ToString());
                 }

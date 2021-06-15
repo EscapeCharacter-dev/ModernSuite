@@ -117,6 +117,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Position++;
                     return new FunctionCallOperation(parameters) { FuncName = i.Representation };
                 }
+                Position++;
                 return new IdentifierOperation { IdentName = i.Representation };
             }
             else
