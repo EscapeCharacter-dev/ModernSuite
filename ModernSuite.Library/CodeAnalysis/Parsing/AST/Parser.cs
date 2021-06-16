@@ -483,6 +483,51 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return new EmptyStatement();
             }
+            else if (Current is ForKeyword)
+            {
+                Position++;
+                if (Current is not ParenthesisOpenOperator)
+                {
+                    Console.WriteLine("Expected an open parenthesis");
+                    return null;
+                }
+                Position++;
+                var decl = ParseDeclaration();
+                Position++;
+                var expr = ParseLOrs();
+                if (Current is not SemicolonOperator)
+                {
+                    Console.WriteLine("Expected a semicolon");
+                    return null;
+                }
+                Position++;
+                var expr2 = ParseLOrs();
+                if (Current is not ParenthesisClosedOperator)
+                {
+                    Console.WriteLine("Expected a closing parenthesis in for statement");
+                    return null;
+                }
+                Position++;
+                var code = ParseStatement();
+                return new ForStatement
+                {
+                    Declaration = decl as Declaration,
+                    FirstExpression = expr,
+                    SecondExpression = expr2,
+                    Statement = code as Statement
+                };
+            }
+            else if (Current is VarKeyword || Current is ConstKeyword)
+            {
+                var decl = ParseDeclaration();
+                if (Current is not SemicolonOperator)
+                {
+                    Console.WriteLine("Expected a semicolon");
+                    return null;
+                }
+                Position++;
+                return decl;
+            }
             else
             {
                 var expr = ParseLOrs();
@@ -603,12 +648,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 return new ConstantDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type.GetType() };
             }
             else
-                return ParseStatement();
+                return null;
         }
 
         public Semantic Parse()
         {
-            var semantic = ParseDeclaration();
+            var semantic = ParseStatement();
             return semantic;
         }
     }

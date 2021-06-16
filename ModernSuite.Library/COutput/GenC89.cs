@@ -170,6 +170,9 @@ namespace ModernSuite.Library.COutput
 
                 return $"const {strtype} {cd.Identifier}={ParseExpression(cd.InitVal)};";
             }
+            else if (semantic is ForStatement fs)
+                return $"for({ParseStatements(fs.Declaration)}{ParseExpression(fs.FirstExpression)};" +
+                    $"{ParseExpression(fs.SecondExpression)}){ParseStatements(fs.Statement)}";
             else
                 return "";
         }
