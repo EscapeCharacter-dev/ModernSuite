@@ -71,7 +71,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var tree = ParseLOrs();
                 if (Position >= Lexables.Count)
                 {
-                    Console.WriteLine("Missing closing parenthesis (premature EOL).");
+                    Console.WriteLine($"({token.Line},{token.Collumn}) Missing closing parenthesis (premature EOL).");
                     return null;
                 }
                 if (Current is ParenthesisClosedOperator)
@@ -81,7 +81,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 }
                 else
                 {
-                    Console.WriteLine("Missing closing parenthesis.");
+                    Console.WriteLine($"({token.Line},{token.Collumn}) Missing closing parenthesis.");
                     return null;
                 }
             }
@@ -126,7 +126,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             }
             else
             {
-                Console.WriteLine($"{token.GetType()} is not a valid literal value!");
+                Console.WriteLine($"Token at ({token.Line},{token.Collumn}) is not a valid literal value!");
                 return null;
             }
         }
@@ -144,7 +144,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -169,7 +169,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -193,7 +193,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -218,7 +218,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -244,7 +244,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -268,7 +268,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -290,7 +290,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -316,7 +316,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -342,7 +342,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -368,7 +368,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator, instead got {op.GetType()}");
+                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
                     return null;
                 }
                 Position++;
@@ -389,7 +389,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     var expr = ParseLOrs();
                     if (Current is not ParenthesisClosedOperator)
                     {
-                        Console.WriteLine("Missing closing parenthesis in if statement");
+                        Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in if statement");
                         return null;
                     }
                     Position++;
@@ -402,7 +402,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     }
                     return new IfElseStatement { TrueCode = code, ElseCode = else_code, Expression = expr };
                 }
-                Console.WriteLine("Invalid if statement syntax");
+                Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid if statement syntax");
                 return null;
             }
             else if (Current is GotoKeyword)
@@ -411,12 +411,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var objective = ParseLOrs();
                 if (objective is null)
                 {
-                    Console.WriteLine("Invalid goto syntax");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid goto syntax");
                     return null;
                 }
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine("Expected a semicolon");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
                     return null;
                 }
                 Position++;
@@ -427,20 +427,20 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 if (Current is not ParenthesisOpenOperator)
                 {
-                    Console.WriteLine("Incorrect usage of managed statement");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Incorrect usage of managed statement");
                     return null;
                 }
                 Position++;
                 var decl = ParseDeclaration();
                 if (decl is not ConstantDecl)
                 {
-                    Console.WriteLine("A managed pointer must be constant");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) A managed pointer must be constant");
                     return null;
                 }
                 Position++;
                 if (Current is not ParenthesisClosedOperator)
                 {
-                    Console.WriteLine("Expected closed parenthesis at the end of managed statement");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected closed parenthesis at the end of managed statement");
                 }
                 Position++;
                 var code = ParseStatement();
@@ -455,14 +455,14 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     var expr = ParseLOrs();
                     if (Current is not ParenthesisClosedOperator)
                     {
-                        Console.WriteLine("Missing closing parenthesis in if statement");
+                        Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in if statement");
                         return null;
                     }
                     Position++;
                     var code = Parse();
                     return new WhileStatement { Expression = expr, While = code };
                 }
-                Console.WriteLine("Invalid while statement syntax");
+                Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid while statement syntax");
                 return null;
             }
             else if (Current is DoKeyword)
@@ -471,26 +471,26 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var code = Parse();
                 if (Current is not WhileKeyword)
                 {
-                    Console.WriteLine("Invalid do...while statement syntax");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid do...while statement syntax");
                     return null;
                 }
                 Position++;
                 if (Current is not ParenthesisOpenOperator)
                 {
-                    Console.WriteLine("Invalid do...while statement syntax");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid do...while statement syntax");
                     return null;
                 }
                 Position++;
                 var expr = ParseLOrs();
                 if (Current is not ParenthesisClosedOperator)
                 {
-                    Console.WriteLine("Missing closing parenthesis in do...while statement");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in do...while statement");
                     return null;
                 }
                 Position++;
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine("Missing semicolon");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing semicolon");
                     return null;
                 }
                 return new DoWhileStatement { Expression = expr, Code = code };
@@ -501,7 +501,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var statements = new List<Semantic>();
                 while (Current is not BracketClosedOperator)
                     if (Current is null)
-                        Console.WriteLine("expected matching closed bracket operator");
+                        Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected matching closed bracket operator");
                     else
                         statements.Add(Parse());
                 Position++;
@@ -517,7 +517,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 if (Current is not ParenthesisOpenOperator)
                 {
-                    Console.WriteLine("Expected an open parenthesis");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an open parenthesis");
                     return null;
                 }
                 Position++;
@@ -526,14 +526,14 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var expr = ParseLOrs();
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine("Expected a semicolon");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
                     return null;
                 }
                 Position++;
                 var expr2 = ParseLOrs();
                 if (Current is not ParenthesisClosedOperator)
                 {
-                    Console.WriteLine("Expected a closing parenthesis in for statement");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a closing parenthesis in for statement");
                     return null;
                 }
                 Position++;
@@ -562,7 +562,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var expr = ParseLOrs();
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine("Expected a semicolon");
+                    if (Current is null)
+                    {
+                        Console.WriteLine("Premature EOL when parsing semicolon (no line number or collumn available)");
+                        return null;
+                    }
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
                     return null;
                 }
                 Position++;
@@ -578,7 +583,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var type = ParseType();
                 if (Current is not Identifier)
                 {
-                    Console.WriteLine("Expected an identifier");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an identifier");
                     return null;
                 }
                 var ident = Current as Identifier;
@@ -589,7 +594,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     goto SkipAssign;
                 else if (Current is not SemicolonOperator && Current is not EqualOperator)
                 {
-                    Console.WriteLine($"Expected an equal or a semicolon, got {Current.GetType()}");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an equal or a semicolon");
                     return null;
                 }
                 Position++;
@@ -598,7 +603,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             SkipAssign:
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine("Expected a semicolon");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
                     return null;
                 }
                 return new VariableDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type as ModernType };
@@ -609,14 +614,14 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var type = ParseType();
                 if (Current is not Identifier)
                 {
-                    Console.WriteLine("Expected an identifier");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an identifier");
                     return null;
                 }
                 var ident = Current as Identifier;
                 Position++;
                 if (Current is not EqualOperator)
                 {
-                    Console.WriteLine($"Expected an equal");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an equal");
                     return null;
                 }
                 Position++;
@@ -624,7 +629,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var ast_value = ParseLOrs();
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine("Expected a semicolon");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
                     return null;
                 }
                 return new ConstantDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type as ModernType };
@@ -675,7 +680,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var expr = ParseLOrs();
                 if (Current is not SquareBracketClosedOperator)
                 {
-                    Console.WriteLine("Missing closing square bracket in array declaration");
+                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing closing square bracket in array declaration");
                     return null;
                 }
                 Position++;
@@ -688,7 +693,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             }
             else
             {
-                Console.WriteLine($"Unknown type of token type {Current.GetType()}");
+                Console.WriteLine($"({Current.Line},{Current.Collumn}) Unknown type token {Current.Representation}");
                 return null;
             }
             if (type.Kind != ModernTypeKind.Pointer && type.Kind != ModernTypeKind.Array)

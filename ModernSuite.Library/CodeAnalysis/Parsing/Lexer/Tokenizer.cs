@@ -52,8 +52,10 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer
                         Next();
                 var opSubstr = Text[start..Position].Trim();
                 var _token = new OperatorResolver().Parse(opSubstr) as Lexable ?? new BadLexable(opSubstr);
+                _token.Line = Text[0..start].Split('\n').Count();
+                _token.Collumn = start / _token.Line + 1;
                 if (_token is BadLexable _badLexable)
-                    Diagnostics.Add($"Unexpected characters '{_badLexable.Representation}'");
+                    Diagnostics.Add($"({_token.Line},{_token.Collumn}) Unexpected characters '{_badLexable.Representation}'");
                 return _token;
             }
 
@@ -61,8 +63,10 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer
                 Next();
             var substr = Text[start..Position].Trim();
             var token = new LiteralResolver().Parse(substr) ?? new KeywordResolver().Parse(substr) as Lexable ?? new Identifier(substr);
+            token.Line = Text[0..start].Split('\n').Count();
+            token.Collumn = start / token.Line + 1;
             if (token is BadLexable badLexable)
-                Diagnostics.Add($"Unexpected characters '{badLexable.Representation}'");
+                Diagnostics.Add($"({token.Line},{token.Collumn}) Unexpected characters '{badLexable.Representation}'");
             return token;
         }
     }

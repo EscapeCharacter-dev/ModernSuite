@@ -105,6 +105,11 @@ namespace ModernSuite.Library.COutput
 
         private string ParseType(ModernType type)
         {
+            if (type is null)
+            {
+                Console.WriteLine("Invalid type");
+                return "";
+            }
             return type.Kind switch
             {
                 ModernTypeKind.Byte => "char",
