@@ -77,6 +77,28 @@ namespace ModernSuite.Library.COutput
             }
             else if (node is IdentifierOperation io)
                 return $"{io.IdentName}";
+            else if (node is SizeofOperation szo)
+                return szo.ToMeasure.Kind switch
+                {
+                    ModernTypeKind.Byte => "1",     // C standard says sizeof(char) = 1
+                    ModernTypeKind.SByte => "1",    // C standard says sizeof(char) = 1
+                    ModernTypeKind.Void => "0",     // void has no size
+                    ModernTypeKind.Short => "sizeof(short)",
+                    ModernTypeKind.UShort => "sizeof(short)",
+                    ModernTypeKind.Int => "sizeof(int)",
+                    ModernTypeKind.UInt => "sizeof(int)",
+                    ModernTypeKind.Least32 => "sizeof(long)",
+                    ModernTypeKind.ULeast32 => "sizeof(long)",
+                    ModernTypeKind.Long => "sizeof(long long)",
+                    ModernTypeKind.ULong => "sizeof(long long)",
+                    ModernTypeKind.Single => "sizeof(float)",
+                    ModernTypeKind.Double => "sizeof(double)",
+                    ModernTypeKind.Quad => "sizeof(long double)",
+                    ModernTypeKind.Pointer => "sizeof(void *)",
+                    ModernTypeKind.Array => "sizeof(void *)",
+                    ModernTypeKind.Function => "sizeof(void *)",
+                    _ => throw new Exception("Missing Modern Type implementation")
+                };
             else
                 return "";
         }

@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations
 {
-    public sealed class SizeofOperation : UnaryASTNode
+    public sealed class SizeofOperation : ASTNode
     {
+        public override IEnumerable<ASTNode> Children => Enumerable.Empty<ASTNode>();
+        public ModernType ToMeasure { get; init; }
     }
 }

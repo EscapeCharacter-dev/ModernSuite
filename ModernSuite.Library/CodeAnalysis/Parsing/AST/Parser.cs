@@ -95,6 +95,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return new AddressOfOperation { Child = ParsePrimary() };
             }
+            else if (token is SizeofKeyword)
+            {
+                Position++;
+                return new SizeofOperation { ToMeasure = ParseType() as ModernType };
+            }
             else if (token is DollarOperator)
             {
                 Position++;
