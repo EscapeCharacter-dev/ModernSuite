@@ -1,4 +1,5 @@
-﻿using ModernSuite.Library.CodeAnalysis.Parsing.AST;
+﻿using ModernSuite.Library.CodeAnalysis;
+using ModernSuite.Library.CodeAnalysis.Parsing.AST;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Declarations;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements;
@@ -77,6 +78,14 @@ namespace ModernSuite.Library.COutput
             }
             else if (node is IdentifierOperation io)
                 return $"{io.IdentName}";
+            else if (node is PrefixIncrementOperation pio)
+                return $"++{ParseExpression(pio.Child)}";
+            else if (node is PrefixDecrementOperation pdo)
+                return $"--{ParseExpression(pdo.Child)}";
+            else if (node is PostfixIncrementOperation poio)
+                return $"{ParseExpression(poio.Child)}++";
+            else if (node is PostfixDecrementOperation podo)
+                return $"{ParseExpression(podo.Child)}--";
             else if (node is SizeofOperation szo)
                 return szo.ToMeasure.Kind switch
                 {
@@ -103,12 +112,16 @@ namespace ModernSuite.Library.COutput
                 return "";
         }
 
-        private string ParseType(ModernType type)
+        private string ParseType(ModernType type, int ptrDepth = 0)
         {
             if (type is null)
             {
-                Console.WriteLine("Invalid type");
+                DiagnosticHandler.Add("Invalid type", DiagnosticKind.Error);
                 return "";
+            }
+            if (type.Kind == ModernTypeKind.Pointer && type.ChildType.Kind == ModernTypeKind.Void)
+            {
+                DiagnosticHandler.Add($"Usage of anonymous pointer", DiagnosticKind.Info);
             }
             return type.Kind switch
             {
@@ -126,14 +139,21 @@ namespace ModernSuite.Library.COutput
                 ModernTypeKind.Single => "float",
                 ModernTypeKind.Double => "double",
                 ModernTypeKind.Quad => "long double",
-                ModernTypeKind.Pointer => $"{ParseType(type.ChildType)}*",
-                ModernTypeKind.Array => $"?{ParseType(type.ChildType)}",
+                ModernTypeKind.Pointer => $"{ParseType(type.ChildType, ++ptrDepth)}*",
+                ModernTypeKind.Array => $"?{ParseType(type.ChildType, ++ptrDepth)}",
             };
         }
 
         public string ParseStatements(Semantic semantic)
         {
-            if (semantic is IfElseStatement ies)
+            if (semantic is ModernProgram mp)
+            {
+                var str = "";
+                foreach (var child in mp.GetSemantics())
+                    str += ParseStatements(child);
+                return str;
+            }
+            else if (semantic is IfElseStatement ies)
                 return $"if({ParseExpression(ies.Expression)}){ParseStatements(ies.TrueCode)}" +
                     $"{(ies.ElseCode != null ? "else " + ParseStatements(ies.ElseCode) : "")}";
             else if (semantic is GotoStatement gs)

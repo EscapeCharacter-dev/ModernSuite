@@ -55,7 +55,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer
                 _token.Line = Text[0..start].Split('\n').Count();
                 _token.Collumn = start / _token.Line + 1;
                 if (_token is BadLexable _badLexable)
-                    Diagnostics.Add($"({_token.Line},{_token.Collumn}) Unexpected characters '{_badLexable.Representation}'");
+                    DiagnosticHandler.Add($"({_token.Line},{_token.Collumn}) Unexpected characters '{_badLexable.Representation}'", DiagnosticKind.Error);
                 return _token;
             }
 
@@ -66,7 +66,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer
             token.Line = Text[0..start].Split('\n').Count();
             token.Collumn = start / token.Line + 1;
             if (token is BadLexable badLexable)
-                Diagnostics.Add($"({token.Line},{token.Collumn}) Unexpected characters '{badLexable.Representation}'");
+                DiagnosticHandler.Add($"({token.Line},{token.Collumn}) Unexpected characters '{badLexable.Representation}'", DiagnosticKind.Error);
             return token;
         }
     }

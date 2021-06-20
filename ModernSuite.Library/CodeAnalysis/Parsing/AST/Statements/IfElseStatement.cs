@@ -9,8 +9,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements
     public sealed class IfElseStatement : Statement
     {
         public ASTNode Expression { get; init; }
-        public Semantic TrueCode { get; init; }
-        public Semantic ElseCode { get; init; }
+        public Semantic TrueCode { get; internal set; }
+        public Semantic ElseCode { get; internal set; }
         public override IEnumerable<Semantic> SubSemantics
         {
             get

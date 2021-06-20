@@ -8,8 +8,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements
 {
     public sealed class DoWhileStatement : Statement
     {
-        public ASTNode Expression { get; init; }
-        public Semantic Code { get; init; }
+        public ASTNode Expression { get; internal set; }
+        public Semantic Code { get; internal set; }
 
         public override IEnumerable<Semantic> SubSemantics
         {

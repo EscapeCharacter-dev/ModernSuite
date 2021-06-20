@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ModernSuite.Library.CodeAnalysis.Parsing.Scoping;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;

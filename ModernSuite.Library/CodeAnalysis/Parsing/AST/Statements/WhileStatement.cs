@@ -9,7 +9,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements
     public sealed class WhileStatement : Statement
     {
         public ASTNode Expression { get; init; }
-        public Semantic While { get; init; }
+        public Semantic While { get; internal set; }
         public override IEnumerable<Semantic> SubSemantics
         {
             get

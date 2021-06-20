@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ModernSuite.Library.CodeAnalysis.Parsing.Scoping;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,5 +12,6 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
     /// </summary>
     public abstract class Semantic
     {
+        public Scope Scope { get; set; }
     }
 }

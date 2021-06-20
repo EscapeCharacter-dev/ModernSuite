@@ -19,12 +19,23 @@ namespace ModernSuite.Library.CodeAnalysis
         {
             while (true)
             {
+                DiagnosticHandler.Clear();
+                Console.Write("> ");
+                Console.ForegroundColor = ConsoleColor.Yellow;
                 var parser = new Parser(Console.ReadLine());
+                Console.ResetColor();
                 var semantic = parser.Parse();
-                //Console.WriteLine(Convert.ToInt64(Evaluate(semantic)));
                 var ccode = "static void *__voidptr_storage;\n";
-                ccode += new GenC99().ParseStatements(semantic);
-                Console.WriteLine(ccode);
+                var should = DiagnosticHandler.Display();
+                if (!should)
+                {
+                    DiagnosticHandler.Clear();
+                    ccode += new GenC99().ParseStatements(semantic);
+ 
+                    var nshould = DiagnosticHandler.Display();
+                    if (!should || !nshould)
+                        Console.WriteLine(ccode);
+                }
             }
         }
 

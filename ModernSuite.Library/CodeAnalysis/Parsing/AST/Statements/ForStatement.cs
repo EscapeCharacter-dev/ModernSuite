@@ -8,10 +8,10 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements
 {
     public sealed class ForStatement : Statement
     {
-        public Declaration Declaration { get; init; }
+        public Declaration Declaration { get; internal set; }
         public ASTNode FirstExpression { get; init; }
         public ASTNode SecondExpression { get; init; }
-        public Statement Statement { get; init; }
+        public Semantic Statement { get; internal set; }
         public override IEnumerable<Semantic> SubSemantics
         {
             get

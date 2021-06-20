@@ -5,6 +5,7 @@ using ModernSuite.Library.CodeAnalysis.Parsing.Lexer;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Operators;
+using ModernSuite.Library.CodeAnalysis.Parsing.Scoping;
 using System;
 using System.Collections.Generic;
 
@@ -19,6 +20,17 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         public int Position { get; private set; } = 0;
         public Lexable Current => Position < Lexables.Count ? Lexables[Position] : null;
         public Lexable PeekNext => Position + 1 < Lexables.Count ? Lexables[Position + 1] : null;
+        public List<Scope> Scopes { get; } = new List<Scope>();
+        public int ScopePosition { get; private set; } = 0;
+        public Scope CurrentScope => ScopePosition > -1 ? Scopes[ScopePosition] : null;
+        private void PushScope()
+        {
+            Scopes.Add(new Scope { Parent = CurrentScope });
+            ScopePosition++;
+        }
+
+        private void PopScope()
+            => ScopePosition--;
 
         public Parser(string text)
         {
@@ -39,7 +51,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         {
             if (Position >= Lexables.Count)
             {
-                Console.WriteLine("There is no more tokens left in the buffer.");
+                DiagnosticHandler.Add("There is no more tokens left in the buffer.", DiagnosticKind.Error);
                 return null;
             }
 
@@ -60,6 +72,16 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return new LNotOperation { Child = ParsePrimary() };
             }
+            else if (token is PlusPlusOperator)
+            {
+                Position++;
+                return new PrefixIncrementOperation { Child = ParsePrimary() };
+            }
+            else if (token is MinusMinusOperator)
+            {
+                Position++;
+                return new PrefixDecrementOperation { Child = ParsePrimary() };
+            }
             else if (token is TildaOperator)
             {
                 Position++;
@@ -71,7 +93,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var tree = ParseLOrs();
                 if (Position >= Lexables.Count)
                 {
-                    Console.WriteLine($"({token.Line},{token.Collumn}) Missing closing parenthesis (premature EOL).");
+                    DiagnosticHandler.Add($"({token.Line},{token.Collumn}) Missing closing parenthesis (premature EOL).", DiagnosticKind.Error);
                     return null;
                 }
                 if (Current is ParenthesisClosedOperator)
@@ -81,7 +103,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 }
                 else
                 {
-                    Console.WriteLine($"({token.Line},{token.Collumn}) Missing closing parenthesis.");
+                    DiagnosticHandler.Add($"({token.Line},{token.Collumn}) Missing closing parenthesis.", DiagnosticKind.Error);
                     return null;
                 }
             }
@@ -119,21 +141,47 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                         Position++;
                     }
                     Position++;
+                    if (!CurrentScope.TryLookup(i.Representation, out var _))
+                        DiagnosticHandler.Add($"({token.Line},{token.Collumn}) {i.Representation} is not declared", DiagnosticKind.Warn);
                     return new FunctionCallOperation(parameters) { FuncName = i.Representation };
                 }
                 Position++;
+                if (!CurrentScope.TryLookup(i.Representation, out var _))
+                    DiagnosticHandler.Add($"({token.Line},{token.Collumn}) {i.Representation} is not declared", DiagnosticKind.Warn);
                 return new IdentifierOperation { IdentName = i.Representation };
             }
             else
             {
-                Console.WriteLine($"Token at ({token.Line},{token.Collumn}) is not a valid literal value!");
+                DiagnosticHandler.Add($"Token at ({token.Line},{token.Collumn}) is not a valid literal value!", DiagnosticKind.Error);
                 return null;
             }
         }
 
+        private ASTNode ParseUnaryPostfix()
+        {
+            var operand = ParsePrimary();
+            if (Position >= Lexables.Count)
+                return operand;
+
+            while (Current is PlusPlusOperator || Current is MinusMinusOperator)
+            {
+                var op = Current;
+                if (op is not Operator)
+                {
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
+                    return null;
+                }
+                Position++;
+                operand = op is PlusPlusOperator ? new PostfixIncrementOperation { Child = operand } :
+                    op is MinusMinusOperator ? new PostfixDecrementOperation { Child = operand } :
+                    null;
+            }
+            return operand;
+        }
+
         private ASTNode ParseFactor()
         {
-            var left = ParsePrimary();
+            var left = ParseUnaryPostfix();
             if (Position >= Lexables.Count)
             {
                 return left;
@@ -144,7 +192,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -169,7 +217,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -193,7 +241,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -218,7 +266,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -244,7 +292,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -268,7 +316,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -290,7 +338,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -316,7 +364,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -342,7 +390,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -368,7 +416,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var op = Current;
                 if (op is not Operator)
                 {
-                    Console.WriteLine($"Expected an operator at ({Current.Line},{Current.Collumn})");
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -389,20 +437,20 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     var expr = ParseLOrs();
                     if (Current is not ParenthesisClosedOperator)
                     {
-                        Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in if statement");
+                        DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in if statement", DiagnosticKind.Error);
                         return null;
                     }
                     Position++;
-                    var code = Parse();
+                    var code = ParseSemantic();
                     Semantic else_code = null;
                     if (Current is ElseKeyword)
                     {
                         Position++;
-                        else_code = Parse();
+                        else_code = ParseSemantic();
                     }
                     return new IfElseStatement { TrueCode = code, ElseCode = else_code, Expression = expr };
                 }
-                Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid if statement syntax");
+                DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Invalid if statement syntax", DiagnosticKind.Error);
                 return null;
             }
             else if (Current is GotoKeyword)
@@ -411,12 +459,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var objective = ParseLOrs();
                 if (objective is null)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid goto syntax");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Invalid goto syntax", DiagnosticKind.Error);
                     return null;
                 }
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -427,23 +475,25 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 if (Current is not ParenthesisOpenOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Incorrect usage of managed statement");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Incorrect usage of managed statement", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
+                PushScope();
                 var decl = ParseDeclaration();
                 if (decl is not ConstantDecl)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) A managed pointer must be constant");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) A managed pointer must be constant", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
                 if (Current is not ParenthesisClosedOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected closed parenthesis at the end of managed statement");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected closed parenthesis at the end of managed statement", DiagnosticKind.Error);
                 }
                 Position++;
                 var code = ParseStatement();
+                PopScope();
                 return new ManagedStatement { Decl = decl as ConstantDecl, Statement = code };
             }
             else if (Current is WhileKeyword)
@@ -455,42 +505,42 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     var expr = ParseLOrs();
                     if (Current is not ParenthesisClosedOperator)
                     {
-                        Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in if statement");
+                        DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in if statement", DiagnosticKind.Error);
                         return null;
                     }
                     Position++;
-                    var code = Parse();
+                    var code = ParseSemantic();
                     return new WhileStatement { Expression = expr, While = code };
                 }
-                Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid while statement syntax");
+                DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Invalid while statement syntax", DiagnosticKind.Error);
                 return null;
             }
             else if (Current is DoKeyword)
             {
                 Position++;
-                var code = Parse();
+                var code = ParseSemantic();
                 if (Current is not WhileKeyword)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid do...while statement syntax");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Invalid do...while statement syntax", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
                 if (Current is not ParenthesisOpenOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Invalid do...while statement syntax");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Invalid do...while statement syntax", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
                 var expr = ParseLOrs();
                 if (Current is not ParenthesisClosedOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in do...while statement");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in do...while statement", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing semicolon");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Missing semicolon", DiagnosticKind.Error);
                     return null;
                 }
                 return new DoWhileStatement { Expression = expr, Code = code };
@@ -499,12 +549,14 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             {
                 Position++;
                 var statements = new List<Semantic>();
+                PushScope();
                 while (Current is not BracketClosedOperator)
                     if (Current is null)
-                        Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected matching closed bracket operator");
+                        DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected matching closed bracket operator", DiagnosticKind.Error);
                     else
-                        statements.Add(Parse());
+                        statements.Add(ParseSemantic());
                 Position++;
+                PopScope();
                 return new GroupStatement(statements);
             }
             else if (Current is SemicolonOperator)
@@ -517,33 +569,35 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 if (Current is not ParenthesisOpenOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an open parenthesis");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an open parenthesis", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
+                PushScope();
                 var decl = ParseDeclaration();
                 Position++;
                 var expr = ParseLOrs();
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
                 var expr2 = ParseLOrs();
                 if (Current is not ParenthesisClosedOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a closing parenthesis in for statement");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a closing parenthesis in for statement", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
                 var code = ParseStatement();
+                PopScope();
                 return new ForStatement
                 {
                     Declaration = decl as Declaration,
                     FirstExpression = expr,
                     SecondExpression = expr2,
-                    Statement = code as Statement
+                    Statement = code
                 };
             }
             else if (Current is VarKeyword || Current is ConstKeyword)
@@ -564,10 +618,10 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 {
                     if (Current is null)
                     {
-                        Console.WriteLine("Premature EOL when parsing semicolon (no line number or collumn available)");
+                        DiagnosticHandler.Add("Premature EOL when parsing semicolon (no line number or collumn available)", DiagnosticKind.Error);
                         return null;
                     }
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -583,7 +637,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var type = ParseType();
                 if (Current is not Identifier)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an identifier");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an identifier", DiagnosticKind.Error);
                     return null;
                 }
                 var ident = Current as Identifier;
@@ -594,7 +648,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     goto SkipAssign;
                 else if (Current is not SemicolonOperator && Current is not EqualOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an equal or a semicolon");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an equal or a semicolon", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -603,10 +657,16 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             SkipAssign:
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
                     return null;
                 }
-                return new VariableDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type as ModernType };
+                var decl = new VariableDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type as ModernType }; ;
+                if (!CurrentScope.TryDeclare(decl))
+                {
+                    DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) {ident.Representation} was already defined", DiagnosticKind.Error);
+                    return null;
+                }
+                return decl;
             }
             else if (Current is ConstKeyword)
             {
@@ -614,14 +674,14 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var type = ParseType();
                 if (Current is not Identifier)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an identifier");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an identifier", DiagnosticKind.Error);
                     return null;
                 }
                 var ident = Current as Identifier;
                 Position++;
                 if (Current is not EqualOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected an equal");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an equal", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -629,10 +689,16 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var ast_value = ParseLOrs();
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Expected a semicolon");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
                     return null;
                 }
-                return new ConstantDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type as ModernType };
+                var decl = new ConstantDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type as ModernType };
+                if (!CurrentScope.TryDeclare(decl))
+                {
+                    DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) {ident.Representation} was already defined", DiagnosticKind.Error);
+                    return null;
+                }
+                return decl;
             }
             else
                 return null;
@@ -680,7 +746,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var expr = ParseLOrs();
                 if (Current is not SquareBracketClosedOperator)
                 {
-                    Console.WriteLine($"({Current.Line},{Current.Collumn}) Missing closing square bracket in array declaration");
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Missing closing square bracket in array declaration", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
@@ -693,7 +759,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             }
             else
             {
-                Console.WriteLine($"({Current.Line},{Current.Collumn}) Unknown type token {Current.Representation}");
+                DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Unknown type token {Current.Representation}", DiagnosticKind.Error);
                 return null;
             }
             if (type.Kind != ModernTypeKind.Pointer && type.Kind != ModernTypeKind.Array)
@@ -701,10 +767,30 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             return type;
         }
 
-        public Semantic Parse()
+        private Semantic ParseSemantic()
         {
+            if (Current is null)
+                return null;
             var semantic = ParseStatement();
             return semantic;
+        }
+
+        public ModernProgram Parse()
+        {
+            var semantics = new List<Semantic>();
+
+            Scopes.Add(new Scope());
+            // scope position is already 0
+
+            while (true)
+            {
+                var semantic = ParseSemantic();
+                if (semantic is null)
+                    break;
+                semantics.Add(semantic);
+            }
+
+            return new ModernProgram(semantics);
         }
     }
 }
