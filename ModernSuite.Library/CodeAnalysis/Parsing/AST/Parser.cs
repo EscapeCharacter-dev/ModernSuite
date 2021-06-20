@@ -570,31 +570,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             if (Current is VarKeyword)
             {
                 Position++;
-                if (Current is not ByteKeyword &&
-                    Current is not SByteKeyword &&
-                    Current is not ShortKeyword &&
-                    Current is not UShortKeyword &&
-                    Current is not Least32Keyword &&
-                    Current is not ULeast32Keyword &&
-                    Current is not IntKeyword &&
-                    Current is not UIntKeyword &&
-                    Current is not LongKeyword &&
-                    Current is not ULongKeyword &&
-                    Current is not SingleKeyword &&
-                    Current is not DoubleKeyword &&
-                    Current is not QuadKeyword &&
-                    Current is not VoidKeyword)
-                {
-                    Console.WriteLine("Expected a type");
-                    return null;
-                }
-                if (Current is VoidKeyword)
-                {
-                    Console.WriteLine("Cannot use type void in variable/constant declarations");
-                    return null;
-                }
-                var type = Current;
-                Position++;
+                var type = ParseType();
                 if (Current is not Identifier)
                 {
                     Console.WriteLine("Expected an identifier");
@@ -620,37 +596,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Console.WriteLine("Expected a semicolon");
                     return null;
                 }
-                return new VariableDecl { Identifier = ident.Representation, InitVal = ast_value,
-                    Type = type.GetType(), IsPointer = false, IsArray = false, ArrayLength = null };
+                return new VariableDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type as ModernType };
             }
             else if (Current is ConstKeyword)
             {
                 Position++;
-                if (Current is not ByteKeyword &&
-                    Current is not SByteKeyword &&
-                    Current is not ShortKeyword &&
-                    Current is not UShortKeyword &&
-                    Current is not Least32Keyword &&
-                    Current is not ULeast32Keyword &&
-                    Current is not IntKeyword &&
-                    Current is not UIntKeyword &&
-                    Current is not LongKeyword &&
-                    Current is not ULongKeyword &&
-                    Current is not SingleKeyword &&
-                    Current is not DoubleKeyword &&
-                    Current is not QuadKeyword &&
-                    Current is not VoidKeyword)
-                {
-                    Console.WriteLine("Expected a type");
-                    return null;
-                }
-                if (Current is VoidKeyword)
-                {
-                    Console.WriteLine("Cannot use type void in variable/constant declarations");
-                    return null;
-                }
-                var type = Current;
-                Position++;
+                var type = ParseType();
                 if (Current is not Identifier)
                 {
                     Console.WriteLine("Expected an identifier");
@@ -671,11 +622,73 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Console.WriteLine("Expected a semicolon");
                     return null;
                 }
-                return new ConstantDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type.GetType(),
-                    IsPointer = false, IsArray = false, ArrayLength = null };
+                return new ConstantDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type as ModernType };
             }
             else
                 return null;
+        }
+
+        private Semantic ParseType()
+        {
+            ModernType type;
+            if (Current is SByteKeyword)
+                type = new ModernType { Kind = ModernTypeKind.SByte, ChildType = null };
+            else if (Current is ByteKeyword)
+                type = new ModernType { Kind = ModernTypeKind.Byte, ChildType = null };
+            else if (Current is ShortKeyword)
+                type = new ModernType { Kind = ModernTypeKind.Short, ChildType = null };
+            else if (Current is UShortKeyword)
+                type = new ModernType { Kind = ModernTypeKind.UShort, ChildType = null };
+            else if (Current is IntKeyword)
+                type = new ModernType { Kind = ModernTypeKind.Int, ChildType = null };
+            else if (Current is UIntKeyword)
+                type = new ModernType { Kind = ModernTypeKind.UInt, ChildType = null };
+            else if (Current is LongKeyword)
+                type = new ModernType { Kind = ModernTypeKind.Long, ChildType = null };
+            else if (Current is ULongKeyword)
+                type = new ModernType { Kind = ModernTypeKind.ULong, ChildType = null };
+            else if (Current is Least32Keyword)
+                type = new ModernType { Kind = ModernTypeKind.Least32, ChildType = null };
+            else if (Current is ULeast32Keyword)
+                type = new ModernType { Kind = ModernTypeKind.ULeast32, ChildType = null };
+            else if (Current is SingleKeyword)
+                type = new ModernType { Kind = ModernTypeKind.Single, ChildType = null };
+            else if (Current is DoubleKeyword)
+                type = new ModernType { Kind = ModernTypeKind.Double, ChildType = null };
+            else if (Current is QuadKeyword)
+                type = new ModernType { Kind = ModernTypeKind.Quad, ChildType = null };
+            else if (Current is VoidKeyword)
+                type = new ModernType { Kind = ModernTypeKind.Void, ChildType = null };
+            else if (Current is AtOperator)
+            {
+                Position++;
+                type = new ModernType { Kind = ModernTypeKind.Pointer, ChildType = ParseType() as ModernType };
+            }
+            else if (Current is SquareBracketOpenOperator)
+            {
+                Position++;
+                var expr = ParseLOrs();
+                if (Current is not SquareBracketClosedOperator)
+                {
+                    Console.WriteLine("Missing closing square bracket in array declaration");
+                    return null;
+                }
+                Position++;
+                type = new ModernType
+                {
+                    Kind = ModernTypeKind.Array,
+                    ChildType = ParseType() as ModernType,
+                    Optional = expr
+                };
+            }
+            else
+            {
+                Console.WriteLine($"Unknown type of token type {Current.GetType()}");
+                return null;
+            }
+            if (type.Kind != ModernTypeKind.Pointer && type.Kind != ModernTypeKind.Array)
+                Position++;
+            return type;
         }
 
         public Semantic Parse()

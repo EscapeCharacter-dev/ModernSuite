@@ -47,6 +47,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords
                 "var" => new VarKeyword(),
                 "while" => new WhileKeyword(),
                 "for" => new ForKeyword(),
+                "sizeof" => new SizeofKeyword(),
                 _ => new Identifier(text)
             };
         }

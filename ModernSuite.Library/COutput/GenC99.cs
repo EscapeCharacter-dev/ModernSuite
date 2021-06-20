@@ -81,6 +81,29 @@ namespace ModernSuite.Library.COutput
                 return "";
         }
 
+        private string ParseType(ModernType type)
+        {
+            return type.Kind switch
+            {
+                ModernTypeKind.Byte => "char",
+                ModernTypeKind.SByte => "signed char",
+                ModernTypeKind.Short => "short",
+                ModernTypeKind.UShort => "unsigned short",
+                ModernTypeKind.Int => "int",
+                ModernTypeKind.UInt => "unsigned int",
+                ModernTypeKind.Least32 => "long",
+                ModernTypeKind.ULeast32 => "unsigned long",
+                ModernTypeKind.Long => "long long",
+                ModernTypeKind.ULong => "unsigned long long",
+                ModernTypeKind.Void => "void",
+                ModernTypeKind.Single => "float",
+                ModernTypeKind.Double => "double",
+                ModernTypeKind.Quad => "long double",
+                ModernTypeKind.Pointer => $"{ParseType(type.ChildType)}*",
+                ModernTypeKind.Array => $"?{ParseType(type.ChildType)}",
+            };
+        }
+
         public string ParseStatements(Semantic semantic)
         {
             if (semantic is IfElseStatement ies)
@@ -108,76 +131,22 @@ namespace ModernSuite.Library.COutput
                 return $"do {ParseStatements(dws.Code)}while({ParseExpression(dws.Expression)});";
             else if (semantic is VariableDecl vdcl)
             {
-                var strtype = "";
-                if (vdcl.Type == typeof(ByteKeyword))
-                    strtype = "char";
-                else if (vdcl.Type == typeof(SByteKeyword))
-                    strtype = "signed char";
-                else if (vdcl.Type == typeof(ShortKeyword))
-                    strtype = "short";
-                else if (vdcl.Type == typeof(UShortKeyword))
-                    strtype = "unsigned short";
-                else if (vdcl.Type == typeof(IntKeyword))
-                    strtype = "int";
-                else if (vdcl.Type == typeof(UIntKeyword))
-                    strtype = "unsigned";
-                else if (vdcl.Type == typeof(Least32Keyword))
-                    strtype = "long";
-                else if (vdcl.Type == typeof(ULeast32Keyword))
-                    strtype = "unsigned long";
-                else if (vdcl.Type == typeof(LongKeyword))
-                    strtype = "long long";
-                else if (vdcl.Type == typeof(ULongKeyword))
-                    strtype = "unsigned long long";
-                else if (vdcl.Type == typeof(SingleKeyword))
-                    strtype = "float";
-                else if (vdcl.Type == typeof(DoubleKeyword))
-                    strtype = "double";
-                else if (vdcl.Type == typeof(QuadKeyword))
-                    strtype = "long double";
-                else if (vdcl.Type == typeof(VoidKeyword))
-                    strtype = "void";
-
-                return $"{strtype} {(vdcl.IsPointer ? "*" : "")}{vdcl.Identifier}" +
-                    $"{(vdcl.IsArray ? $"[{ParseExpression(vdcl.ArrayLength)}]" : "")}" +
-                    $"={(vdcl.InitVal != null ? ParseExpression(vdcl.InitVal) : "")};";
+                var type = ParseType(vdcl.Type);
+                var isArray = type.StartsWith('?') ? true : false;
+                type = type.TrimStart('?');
+                return
+$"{type} {vdcl.Identifier}{(isArray ? $"[{ParseExpression(vdcl.Type.Optional)}]" : "")}={ParseExpression(vdcl.InitVal)};";
             }
+
             else if (semantic is ConstantDecl cd)
             {
-                var strtype = "";
-                if (cd.Type == typeof(ByteKeyword))
-                    strtype = "char";
-                else if (cd.Type == typeof(SByteKeyword))
-                    strtype = "signed char";
-                else if (cd.Type == typeof(ShortKeyword))
-                    strtype = "short";
-                else if (cd.Type == typeof(UShortKeyword))
-                    strtype = "unsigned short";
-                else if (cd.Type == typeof(IntKeyword))
-                    strtype = "int";
-                else if (cd.Type == typeof(UIntKeyword))
-                    strtype = "unsigned";
-                else if (cd.Type == typeof(Least32Keyword))
-                    strtype = "long";
-                else if (cd.Type == typeof(ULeast32Keyword))
-                    strtype = "unsigned long";
-                else if (cd.Type == typeof(LongKeyword))
-                    strtype = "long long";
-                else if (cd.Type == typeof(ULongKeyword))
-                    strtype = "unsigned long long";
-                else if (cd.Type == typeof(SingleKeyword))
-                    strtype = "float";
-                else if (cd.Type == typeof(DoubleKeyword))
-                    strtype = "double";
-                else if (cd.Type == typeof(QuadKeyword))
-                    strtype = "long double";
-                else if (cd.Type == typeof(VoidKeyword))
-                    strtype = "void";
-
-                return $"const {strtype} {(cd.IsPointer ? "*" : "")}" +
-                    $"{cd.Identifier}{(cd.IsArray ? $"[{ParseExpression(cd.ArrayLength)}]" : "")}" +
-                    $"={ParseExpression(cd.InitVal)};";
+                var type = ParseType(cd.Type);
+                var isArray = type.StartsWith('?') ? true : false;
+                type = type.TrimStart('?');
+                return
+$"const {type} {cd.Identifier}{(isArray ? $"[{ParseExpression(cd.Type.Optional)}]" : "")}={ParseExpression(cd.InitVal)};";
             }
+
             else if (semantic is ForStatement fs)
                 return $"for({ParseStatements(fs.Declaration)}{ParseExpression(fs.FirstExpression)};" +
                     $"{ParseExpression(fs.SecondExpression)}){ParseStatements(fs.Statement)}";
