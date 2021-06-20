@@ -3,7 +3,6 @@ using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using ModernSuite.Library.COutput;
-using ModernSuite.Library.IR;
 using ModernSuite.Library.Xml;
 using System;
 using System.IO;
@@ -20,9 +19,9 @@ namespace ModernSuite.Library.CodeAnalysis
             while (true)
             {
                 DiagnosticHandler.Clear();
-                Console.Write("> ");
+                Console.Write($"{Environment.CurrentDirectory}> ");
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                var parser = new Parser(Console.ReadLine());
+                var parser = new Parser(File.ReadAllText(Console.ReadLine()));
                 Console.ResetColor();
                 var semantic = parser.Parse();
                 var ccode = "static void *__voidptr_storage;\n";

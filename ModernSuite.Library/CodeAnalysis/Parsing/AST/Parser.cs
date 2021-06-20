@@ -428,6 +428,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
 
         private Semantic ParseStatement()
         {
+            if (Current is not FunctionKeyword && Current is not VarKeyword && Current is not ConstKeyword &&
+                !CurrentScope.IsFunction)
+            {
+                DiagnosticHandler.Add($"A statement or expression may only be used in a function body", DiagnosticKind.Error);
+                return null;
+            }
             if (Current is IfKeyword)
             {
                 Position++;
@@ -470,32 +476,6 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return new GotoStatement { Objective = objective };
             }
-            else if (Current is ManagedKeyword)
-            {
-                Position++;
-                if (Current is not ParenthesisOpenOperator)
-                {
-                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Incorrect usage of managed statement", DiagnosticKind.Error);
-                    return null;
-                }
-                Position++;
-                PushScope();
-                var decl = ParseDeclaration();
-                if (decl is not ConstantDecl)
-                {
-                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) A managed pointer must be constant", DiagnosticKind.Error);
-                    return null;
-                }
-                Position++;
-                if (Current is not ParenthesisClosedOperator)
-                {
-                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected closed parenthesis at the end of managed statement", DiagnosticKind.Error);
-                }
-                Position++;
-                var code = ParseStatement();
-                PopScope();
-                return new ManagedStatement { Decl = decl as ConstantDecl, Statement = code };
-            }
             else if (Current is WhileKeyword)
             {
                 Position++;
@@ -509,7 +489,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                         return null;
                     }
                     Position++;
+                    PushScope();
+                    CurrentScope.BreakAllowed = true;
+                    CurrentScope.ContinueAllowed = true;
                     var code = ParseSemantic();
+                    PopScope();
                     return new WhileStatement { Expression = expr, While = code };
                 }
                 DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Invalid while statement syntax", DiagnosticKind.Error);
@@ -518,7 +502,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             else if (Current is DoKeyword)
             {
                 Position++;
+                PushScope();
+                CurrentScope.BreakAllowed = true;
+                CurrentScope.ContinueAllowed = true;
                 var code = ParseSemantic();
+                PopScope();
                 if (Current is not WhileKeyword)
                 {
                     DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Invalid do...while statement syntax", DiagnosticKind.Error);
@@ -574,6 +562,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 }
                 Position++;
                 PushScope();
+                CurrentScope.BreakAllowed = true;
+                CurrentScope.ContinueAllowed = true;
                 var decl = ParseDeclaration();
                 Position++;
                 var expr = ParseLOrs();
@@ -610,6 +600,64 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 }
                 Position++;
                 return decl;
+            }
+            else if (Current is FunctionKeyword)
+                return ParseDeclaration();
+            else if (Current is ReturnKeyword)
+            {
+                if (!CurrentScope.IsFunction)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) return can only be used in a function", DiagnosticKind.Error);
+                    return null;
+                }
+                Position++;
+                var expr = ParseLOrs();
+                if (Current is not SemicolonOperator)
+                {
+                    if (Current is null)
+                    {
+                        DiagnosticHandler.Add("Premature EOL when parsing semicolon (no line number or collumn available)", DiagnosticKind.Error);
+                        return null;
+                    }
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
+                }
+                return new ReturnStatement { Expression = expr };
+            }
+            else if (Current is BreakKeyword)
+            {
+                if (!CurrentScope.BreakAllowed)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) break cannot be used in this scope", DiagnosticKind.Error);
+                    return null;
+                }
+                if (Current is not SemicolonOperator)
+                {
+                    if (Current is null)
+                    {
+                        DiagnosticHandler.Add("Premature EOL when parsing semicolon (no line number or collumn available)", DiagnosticKind.Error);
+                        return null;
+                    }
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
+                }
+                return new BreakStatement();
+            }
+            else if (Current is ContinueKeyword)
+            {
+                if (!CurrentScope.ContinueAllowed)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) continue cannot be used in this scope", DiagnosticKind.Error);
+                    return null;
+                }
+                if (Current is not SemicolonOperator)
+                {
+                    if (Current is null)
+                    {
+                        DiagnosticHandler.Add("Premature EOL when parsing semicolon (no line number or collumn available)", DiagnosticKind.Error);
+                        return null;
+                    }
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
+                }
+                return new ContinueStatement();
             }
             else
             {
@@ -699,6 +747,85 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     return null;
                 }
                 return decl;
+            }
+            else if (Current is FunctionKeyword)
+            {
+                Position++;
+                var type = ParseType();
+                if (Current is not Identifier)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an identifier", DiagnosticKind.Error);
+                    return null;
+                }
+                var ident = Current;
+                Position++;
+                if (Current is not ParenthesisOpenOperator)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an open parenthesis", DiagnosticKind.Error);
+                    return null;
+                }
+                Position++;
+                PushScope();
+                CurrentScope.IsFunction = true;
+                var paramList = new List<Parameter>();
+                while (Current is not ParenthesisClosedOperator)
+                {
+                    if (Current is null)
+                    {
+                        DiagnosticHandler.Add($"Premature EOL in function declaration", DiagnosticKind.Error);
+                        return null;
+                    }
+
+                    var paramType = ParseType();
+                    if (Current is not Identifier)
+                    {
+                        DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an identifier", DiagnosticKind.Error);
+                        return null;
+                    }
+                    var paramIdent = Current as Identifier;
+                    Position++;
+                    var parameter = new Parameter
+                    {
+                        Identifier = paramIdent.Representation,
+                        Type = paramType as ModernType
+                    };
+                    paramList.Add(parameter);
+                    if (!CurrentScope.TryDeclare(parameter))
+                    {
+                        DiagnosticHandler.Add($"({paramIdent.Line},{paramIdent.Collumn}) Cannot declare parameter " +
+                            $"{paramIdent.Representation} because it is already declared in a higher scope.",
+                            DiagnosticKind.Error);
+                        return null;
+                    }
+                    if (Current is not CommaOperator && Current is not ParenthesisClosedOperator)
+                    {
+                        DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected ',' or ')'", DiagnosticKind.Error);
+                        return null;
+                    }
+                    if (Current is CommaOperator)
+                        Position++;
+                }
+                Position++;
+                var code = ParseSemantic();
+                if (code is not ASTNode && code is not GroupStatement)
+                {
+                    DiagnosticHandler.Add($"Expected a group statement (e.g. {{}}) or an expression", DiagnosticKind.Error);
+                    return null;
+                }
+                PopScope();
+                var func = new FuncDecl
+                {
+                    Code = code,
+                    Identifier = ident.Representation,
+                    Type = type as ModernType,
+                    Parameters = paramList
+                };
+                if (!CurrentScope.TryDeclare(func))
+                {
+                    DiagnosticHandler.Add($"Cannot declare function. Symbol {func.Identifier} is already declared", DiagnosticKind.Error);
+                    return null;
+                }
+                return func;
             }
             else
                 return null;

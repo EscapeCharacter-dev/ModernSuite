@@ -13,10 +13,31 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Scoping
         public Dictionary<string, Declaration> Symbols { get; init; } = new Dictionary<string, Declaration>();
 
         public Scope Parent { get; init; }
+        private bool _isFunction = false;
+        private bool _breakAllowed = false;
+        private bool _continueAllowed = false;
+        
+        public bool IsFunction
+        {
+            get => _isFunction ? true : Parent != null ? Parent.IsFunction : false;
+            set => _isFunction = value;
+        }
+
+        public bool BreakAllowed
+        {
+            get => _breakAllowed ? true : Parent != null ? Parent.BreakAllowed : false;
+            set => _breakAllowed = value;
+        }
+
+        public bool ContinueAllowed
+        {
+            get => _continueAllowed ? true : Parent != null ? Parent.ContinueAllowed : false;
+            set => _continueAllowed = value;
+        }
 
         public bool TryDeclare(Declaration declaration)
         {
-            if (Symbols.ContainsKey(declaration.Identifier))
+            if (Symbols.ContainsKey(declaration.Identifier) || Parent != null && Parent.TryLookup(declaration.Identifier, out var _))
                 return false;
             Symbols.Add(declaration.Identifier, declaration);
             return true;

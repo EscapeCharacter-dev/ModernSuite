@@ -165,6 +165,12 @@ namespace ModernSuite.Library.COutput
             }
             else if (semantic is ASTNode an)
                 return $"{ParseExpression(an)};";
+            else if (semantic is ReturnStatement rs)
+                return $"return {ParseExpression(rs.Expression)};";
+            else if (semantic is BreakStatement)
+                return "break;";
+            else if (semantic is ContinueStatement)
+                return "continue;";                 // TODO: Continue in switch statements
             else if (semantic is GroupStatement grs)
             {
                 var output = "";
@@ -193,12 +199,36 @@ $"{type} {vdcl.Identifier}{(isArray ? $"[{ParseExpression(vdcl.Type.Optional)}]"
                 return
 $"const {type} {cd.Identifier}{(isArray ? $"[{ParseExpression(cd.Type.Optional)}]" : "")}={ParseExpression(cd.InitVal)};";
             }
-
+            else if (semantic is FuncDecl fd)
+            {
+                var type = ParseType(fd.Type);
+                if (type.StartsWith('?'))
+                {
+                    DiagnosticHandler.Add($"({fd.Identifier}) A function cannot return an array", DiagnosticKind.Error);
+                    return null;
+                }
+                var parameters = "";
+                foreach (var paramType in fd.Parameters)
+                {
+                    var paramTypeAsStr = ParseType(paramType.Type);
+                    if (paramTypeAsStr.StartsWith('?'))
+                    {
+                        DiagnosticHandler.Add($"({fd.Identifier}) A function parameter cannot be of type array", DiagnosticKind.Error);
+                        return null;
+                    }
+                    parameters += $"{paramTypeAsStr} {paramType.Identifier},";
+                }
+                parameters = parameters.TrimEnd(',');
+                var code = "";
+                if (fd.Code is ASTNode astnode)
+                    code = $"{{return {ParseExpression(astnode)};}}";
+                else
+                    code = ParseStatements(fd.Code);
+                return $"{type} {fd.Identifier}({parameters}){code}";
+            }
             else if (semantic is ForStatement fs)
                 return $"for({ParseStatements(fs.Declaration)}{ParseExpression(fs.FirstExpression)};" +
                     $"{ParseExpression(fs.SecondExpression)}){ParseStatements(fs.Statement)}";
-            else if (semantic is ManagedStatement ms)
-                return $"{{{ParseStatements(ms.Decl)}{ParseStatements(ms.Statement)}_managedfree({ms.Decl.Identifier});}}";
             else
                 return "";
         }

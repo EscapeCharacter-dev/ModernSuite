@@ -1,5 +1,4 @@
-﻿using ModernSuite.Library.IR;
-using System.Xml.Serialization;
+﻿using System.Xml.Serialization;
 
 namespace ModernSuite.Library.Xml
 {
@@ -11,8 +10,6 @@ namespace ModernSuite.Library.Xml
         public string Name { get; init; }
         public string Version { get; init; }
         public Debug Debug { get; init; }
-        [XmlArray("Code")]
-        public Operation[] Code { get; init; }
         [XmlArray("Dependencies")]
         public Dependency[] Dependencies { get; init; }
     }
