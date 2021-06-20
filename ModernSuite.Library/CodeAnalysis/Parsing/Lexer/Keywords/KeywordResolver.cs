@@ -16,7 +16,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords
                 "do" => new DoKeyword(),
                 "double" => new DoubleKeyword(),
                 "else" => new ElseKeyword(),
-                "extended" => new ExtendedKeyword(),
+                "void" => new VoidKeyword(),
                 "foreach" => new ForeachKeyword(),
                 "foreachm" => new ForeachmKeyword(),
                 "function" => new FunctionKeyword(),

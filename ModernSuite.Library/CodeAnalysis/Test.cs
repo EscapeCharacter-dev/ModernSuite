@@ -21,9 +21,9 @@ namespace ModernSuite.Library.CodeAnalysis
             {
                 var parser = new Parser(Console.ReadLine());
                 var semantic = parser.Parse();
-                Console.WriteLine(Convert.ToInt64(Evaluate(semantic)));
+                //Console.WriteLine(Convert.ToInt64(Evaluate(semantic)));
                 var ccode = "static void *__voidptr_storage;\n";
-                ccode += new GenC89().ParseStatements(semantic);
+                ccode += new GenC99().ParseStatements(semantic);
                 Console.WriteLine(ccode);
             }
         }

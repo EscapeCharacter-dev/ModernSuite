@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 
 namespace ModernSuite.Library.COutput
 {
-    public sealed class GenC89
+    public sealed class GenC99
     {
         private string ParseExpression(ASTNode node)
         {
@@ -135,8 +135,12 @@ namespace ModernSuite.Library.COutput
                     strtype = "double";
                 else if (vdcl.Type == typeof(QuadKeyword))
                     strtype = "long double";
+                else if (vdcl.Type == typeof(VoidKeyword))
+                    strtype = "void";
 
-                return $"{strtype} {vdcl.Identifier}={(vdcl.InitVal != null ? ParseExpression(vdcl.InitVal) : "")};";
+                return $"{strtype} {(vdcl.IsPointer ? "*" : "")}{vdcl.Identifier}" +
+                    $"{(vdcl.IsArray ? $"[{ParseExpression(vdcl.ArrayLength)}]" : "")}" +
+                    $"={(vdcl.InitVal != null ? ParseExpression(vdcl.InitVal) : "")};";
             }
             else if (semantic is ConstantDecl cd)
             {
@@ -167,12 +171,18 @@ namespace ModernSuite.Library.COutput
                     strtype = "double";
                 else if (cd.Type == typeof(QuadKeyword))
                     strtype = "long double";
+                else if (cd.Type == typeof(VoidKeyword))
+                    strtype = "void";
 
-                return $"const {strtype} {cd.Identifier}={ParseExpression(cd.InitVal)};";
+                return $"const {strtype} {(cd.IsPointer ? "*" : "")}" +
+                    $"{cd.Identifier}{(cd.IsArray ? $"[{ParseExpression(cd.ArrayLength)}]" : "")}" +
+                    $"={ParseExpression(cd.InitVal)};";
             }
             else if (semantic is ForStatement fs)
                 return $"for({ParseStatements(fs.Declaration)}{ParseExpression(fs.FirstExpression)};" +
                     $"{ParseExpression(fs.SecondExpression)}){ParseStatements(fs.Statement)}";
+            else if (semantic is ManagedStatement ms)
+                return $"{{{ParseStatements(ms.Decl)}{ParseStatements(ms.Statement)}_managedfree({ms.Decl.Identifier});}}";
             else
                 return "";
         }

@@ -14,5 +14,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         /// Note: This is the instance of the type of the lexable.
         /// </summary>
         public Type Type { get; init; }
+        public bool IsPointer { get; init; }
+        public bool IsArray { get; init; }
+        public ASTNode ArrayLength { get; init; }
     }
 }

@@ -417,6 +417,30 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return new GotoStatement { Objective = objective };
             }
+            else if (Current is ManagedKeyword)
+            {
+                Position++;
+                if (Current is not ParenthesisOpenOperator)
+                {
+                    Console.WriteLine("Incorrect usage of managed statement");
+                    return null;
+                }
+                Position++;
+                var decl = ParseDeclaration();
+                if (decl is not ConstantDecl)
+                {
+                    Console.WriteLine("A managed pointer must be constant");
+                    return null;
+                }
+                Position++;
+                if (Current is not ParenthesisClosedOperator)
+                {
+                    Console.WriteLine("Expected closed parenthesis at the end of managed statement");
+                }
+                Position++;
+                var code = ParseStatement();
+                return new ManagedStatement { Decl = decl as ConstantDecl, Statement = code };
+            }
             else if (Current is WhileKeyword)
             {
                 Position++;
@@ -546,19 +570,6 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             if (Current is VarKeyword)
             {
                 Position++;
-                if (Current is not Identifier)
-                {
-                    Console.WriteLine("Expected an identifier");
-                    return null;
-                }
-                var ident = Current as Identifier;
-                Position++;
-                if (Current is not ArrowOperator)
-                {
-                    Console.WriteLine("Expected '->'");
-                    return null;
-                }
-                Position++;
                 if (Current is not ByteKeyword &&
                     Current is not SByteKeyword &&
                     Current is not ShortKeyword &&
@@ -571,12 +582,26 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Current is not ULongKeyword &&
                     Current is not SingleKeyword &&
                     Current is not DoubleKeyword &&
-                    Current is not QuadKeyword)
+                    Current is not QuadKeyword &&
+                    Current is not VoidKeyword)
                 {
                     Console.WriteLine("Expected a type");
                     return null;
                 }
+                if (Current is VoidKeyword)
+                {
+                    Console.WriteLine("Cannot use type void in variable/constant declarations");
+                    return null;
+                }
                 var type = Current;
+                Position++;
+                if (Current is not Identifier)
+                {
+                    Console.WriteLine("Expected an identifier");
+                    return null;
+                }
+                var ident = Current as Identifier;
+
                 Position++;
                 ASTNode ast_value = null;
                 if (Current is not EqualOperator && Current is SemicolonOperator)
@@ -595,23 +620,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Console.WriteLine("Expected a semicolon");
                     return null;
                 }
-                return new VariableDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type.GetType() };
+                return new VariableDecl { Identifier = ident.Representation, InitVal = ast_value,
+                    Type = type.GetType(), IsPointer = false, IsArray = false, ArrayLength = null };
             }
             else if (Current is ConstKeyword)
             {
-                Position++;
-                if (Current is not Identifier)
-                {
-                    Console.WriteLine("Expected an identifier");
-                    return null;
-                }
-                var ident = Current as Identifier;
-                Position++;
-                if (Current is not ArrowOperator)
-                {
-                    Console.WriteLine("Expected '->'");
-                    return null;
-                }
                 Position++;
                 if (Current is not ByteKeyword &&
                     Current is not SByteKeyword &&
@@ -625,16 +638,29 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Current is not ULongKeyword &&
                     Current is not SingleKeyword &&
                     Current is not DoubleKeyword &&
-                    Current is not QuadKeyword)
+                    Current is not QuadKeyword &&
+                    Current is not VoidKeyword)
                 {
                     Console.WriteLine("Expected a type");
                     return null;
                 }
+                if (Current is VoidKeyword)
+                {
+                    Console.WriteLine("Cannot use type void in variable/constant declarations");
+                    return null;
+                }
                 var type = Current;
+                Position++;
+                if (Current is not Identifier)
+                {
+                    Console.WriteLine("Expected an identifier");
+                    return null;
+                }
+                var ident = Current as Identifier;
                 Position++;
                 if (Current is not EqualOperator)
                 {
-                    Console.WriteLine($"Expected an equal or a semicolon, got {Current.GetType()}");
+                    Console.WriteLine($"Expected an equal");
                     return null;
                 }
                 Position++;
@@ -645,7 +671,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Console.WriteLine("Expected a semicolon");
                     return null;
                 }
-                return new ConstantDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type.GetType() };
+                return new ConstantDecl { Identifier = ident.Representation, InitVal = ast_value, Type = type.GetType(),
+                    IsPointer = false, IsArray = false, ArrayLength = null };
             }
             else
                 return null;
