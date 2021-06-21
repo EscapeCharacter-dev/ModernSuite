@@ -8,6 +8,7 @@ using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Operators;
 using ModernSuite.Library.CodeAnalysis.Parsing.Scoping;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
 {
@@ -148,13 +149,50 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                         Position++;
                     }
                     Position++;
-                    if (!CurrentScope.TryLookup(i.Representation, out var _))
+                    if (!CurrentScope.TryLookup(i.Representation, out var flooked_up))
                         DiagnosticHandler.Add($"({token.Line},{token.Collumn}) {i.Representation} is not declared", DiagnosticKind.Warn);
+                    if (flooked_up is not FuncDecl)
+                    {
+                        DiagnosticHandler.Add($"({token.Line},{token.Collumn}) {i.Representation} is already declared but it is not a function", DiagnosticKind.Error);
+                        return null;
+                    }
                     return new FunctionCallOperation(parameters) { FuncName = i.Representation };
                 }
                 Position++;
-                if (!CurrentScope.TryLookup(i.Representation, out var _))
+                if (!CurrentScope.TryLookup(i.Representation, out var looked_up))
                     DiagnosticHandler.Add($"({token.Line},{token.Collumn}) {i.Representation} is not declared", DiagnosticKind.Warn);
+                if (looked_up is EnumDecl)
+                {
+                    if (Current is not DotOperator)
+                    {
+                        DiagnosticHandler.Add($"({token.Line},{token.Collumn}) Accessing bare enum", DiagnosticKind.Error);
+                        return null;
+                    }
+                    Position++;
+                    if (Current is not Identifier)
+                    {
+                        DiagnosticHandler.Add($"({token.Line},{token.Collumn}) Expected an identifier", DiagnosticKind.Error);
+                        return null;
+                    }
+                    var to_look_up = Current;
+                    Position++;
+                    var counter = 0;
+                    var unmatched = true;
+                    foreach (var at in looked_up.Members)
+                    {
+                        if (at.Identifier == to_look_up.Representation)
+                        {
+                            unmatched = false;
+                            break;
+                        }
+                        counter++;
+                    }
+                    if (unmatched)
+                    {
+                        DiagnosticHandler.Add($"({to_look_up.Line},{to_look_up.Collumn}) Unknown member {to_look_up.Representation}", DiagnosticKind.Error);
+                    }
+                    return new LiteralASTNode { Lexable = new IntLiteral { Value = counter } };
+                }
                 return new IdentifierOperation { IdentName = i.Representation };
             }
             else
@@ -537,7 +575,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
 
         private Semantic ParseStatement()
         {
-            if (Current is not FunctionKeyword && Current is not VarKeyword && Current is not ConstKeyword &&
+            if (Current is not FunctionKeyword && Current is not VarKeyword && Current is not ConstKeyword
+                && Current is not EnumKeyword &&
                 !CurrentScope.IsFunction)
             {
                 DiagnosticHandler.Add($"A statement or expression may only be used in a function body", DiagnosticKind.Error);
@@ -699,7 +738,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Statement = code
                 };
             }
-            else if (Current is VarKeyword || Current is ConstKeyword)
+            else if (Current is VarKeyword || Current is ConstKeyword || Current is EnumKeyword)
             {
                 var decl = ParseDeclaration();
                 if (Current is not SemicolonOperator)
@@ -853,6 +892,41 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 if (!CurrentScope.TryDeclare(decl))
                 {
                     DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) {ident.Representation} was already defined", DiagnosticKind.Error);
+                    return null;
+                }
+                return decl;
+            }
+            else if (Current is EnumKeyword)
+            {
+                Position++;
+                if (Current is not Identifier)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an identifier", DiagnosticKind.Error);
+                    return null;
+                }
+                var ident = Current;
+                Position++;
+                if (Current is not EqualOperator)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected '='", DiagnosticKind.Error);
+                    return null;
+                }
+                Position++;
+                var memberList = new List<Identifier>();
+                var members = new List<EnumMemberDecl>();
+                while (Current is Identifier)
+                {
+                    var memberIdent = Current;
+                    Position++;
+                    if (Current is CommaOperator)
+                        Position++;
+                    memberList.Add(memberIdent as Identifier);
+                    members.Add(new EnumMemberDecl { Identifier = memberIdent.Representation });
+                }
+                var decl = new EnumDecl { EnumDecls = memberList.Select(x => x.Representation).ToList(), Members = members, Identifier = ident.Representation };
+                if (!CurrentScope.TryDeclare(decl))
+                {
+                    DiagnosticHandler.Add($"Cannot declare enum. Symbol {decl.Identifier} is already declared in this scope", DiagnosticKind.Error);
                     return null;
                 }
                 return decl;

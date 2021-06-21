@@ -27,6 +27,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords
                 "half" => new HalfKeyword(),
                 "if" => new IfKeyword(),
                 "int" => new IntKeyword(),
+                "enum" => new EnumKeyword(),
                 "least32" => new Least32Keyword(),
                 "long" => new LongKeyword(),
                 "managed" => new ManagedKeyword(),

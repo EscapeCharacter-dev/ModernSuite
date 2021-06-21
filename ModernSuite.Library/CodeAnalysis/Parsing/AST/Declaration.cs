@@ -12,5 +12,6 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         public string Identifier { get; init; }
         public ASTNode InitVal { get; init; }
         public ModernType Type { get; init; }
+        public IEnumerable<Declaration> Members { get; init; }
     }
 }

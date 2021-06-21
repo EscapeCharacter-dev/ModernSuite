@@ -42,6 +42,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals
                 return new IntLiteral { Value = 1 };
             else if (text == "false")
                 return new IntLiteral { Value = 0 };
+            else if (decimal.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var d128Result))
+                return new FloatingLiteral { Value = d128Result };
             else
                 return null;
         }

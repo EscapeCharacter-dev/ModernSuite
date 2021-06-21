@@ -7,6 +7,7 @@ using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -66,6 +67,8 @@ namespace ModernSuite.Library.COutput
             {
                 if (lan.Lexable is StringLiteral)
                     return $"\"{ParseContainingCharacters(lan.Lexable.Representation)}\"";
+                if (lan.Lexable is FloatingLiteral fl)
+                    return $"{((decimal)fl.Value).ToString(CultureInfo.InvariantCulture)}";
                 return $"{lan.Lexable.Representation}";
             }
             else if (node is AdditionOperation ao)
@@ -260,6 +263,8 @@ namespace ModernSuite.Library.COutput
             }
             else if (semantic is WhileStatement ws)
                 return $"while({ParseExpression(ws.Expression)}){ParseStatements(ws.While)}";
+            else if (semantic is EnumDecl ed)
+                return "";
             else if (semantic is DoWhileStatement dws)
                 return $"do {ParseStatements(dws.Code)}while({ParseExpression(dws.Expression)});";
             else if (semantic is VariableDecl vdcl)
