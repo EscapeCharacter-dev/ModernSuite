@@ -26,6 +26,91 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer
 
         private bool IsCurrentAnIdentifer => char.IsLetterOrDigit(Current) || Current == '_';
 
+        private Lexable ParseString()
+        {
+            Next();
+            if (Current == '\0')
+            {
+                DiagnosticHandler.Add($"String is unfinished", DiagnosticKind.Error);
+                return null;
+            }
+            var start = Position;
+            var stringBuilder = new StringBuilder();
+            var done = false;
+
+            while (!done)
+            {
+                switch (Current)
+                {
+                case '\0':
+                case '\r':
+                case '\n':
+                    DiagnosticHandler.Add($"String is unfinished", DiagnosticKind.Error);
+                    return null;
+                case '"':
+                    Next();
+                    done = true;
+                    break;
+                case '\\':
+                    Next();
+                    if (Position >= Text.Length)
+                    {
+                        DiagnosticHandler.Add("Escape sequence in string is unfinished", DiagnosticKind.Error);
+                        return null;
+                    }
+                    switch (Current)
+                    {
+                    case '"':
+                        stringBuilder.Append('"');
+                        break;
+                    case 'n':
+                        stringBuilder.Append('\n');
+                        break;
+                    case 'r':
+                        stringBuilder.Append('\r');
+                        break;
+                    case 't':
+                        stringBuilder.Append('\t');
+                        break;
+                    case 'v':
+                        stringBuilder.Append('\v');
+                        break;
+                    case '\\':
+                        stringBuilder.Append('\\');
+                        break;
+                    case '\'':
+                        stringBuilder.Append('\'');
+                        break;
+                    case 'f':
+                        stringBuilder.Append('\f');
+                        break;
+                    case 'b':
+                        stringBuilder.Append('\b');
+                        break;
+                    case 'a':
+                        stringBuilder.Append('\a');
+                        break;
+                    case '0':
+                        stringBuilder.Append('\0');
+                        break;
+                    default:
+                        DiagnosticHandler.Add($"Unrecognized escape sequence", DiagnosticKind.Error);
+                        return null;
+                    }
+                    break;
+                default:
+                    stringBuilder.Append(Current);
+                    Next();
+                    break;
+                }
+            }
+
+            var token = new StringLiteral(stringBuilder.ToString());
+            token.Line = Text[0..start].Split('\n').Count();
+            token.Collumn = start / token.Line + 1;
+            return token;
+        }
+
         public Lexable NextToken()
         {
             while (char.IsWhiteSpace(Current))
@@ -37,6 +122,9 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer
             }
 
             var start = Position;
+
+            if (Current == '"')
+                return ParseString();
 
             if (!IsCurrentAnIdentifer && Current != '\0' && !char.IsWhiteSpace(Current))
             {

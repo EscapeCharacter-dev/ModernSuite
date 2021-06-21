@@ -4,6 +4,7 @@ using ModernSuite.Library.CodeAnalysis.Parsing.AST.Declarations;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations;
 using ModernSuite.Library.CodeAnalysis.Parsing.AST.Statements;
 using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Keywords;
+using ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,10 +15,59 @@ namespace ModernSuite.Library.COutput
 {
     public sealed class GenC99
     {
+        private string ParseContainingCharacters(string str)
+        {
+            var builder = new StringBuilder();
+            foreach (var c in str)
+                switch (c)
+                {
+                case '\0':
+                    builder.Append(@"\0");
+                    break;
+                case '"':
+                    builder.Append(@"\""");
+                    break;
+                case '\'':
+                    builder.Append(@"\'");
+                    break;
+                case '\\':
+                    builder.Append(@"\\");
+                    break;
+                case '\t':
+                    builder.Append(@"\t");
+                    break;
+                case '\v':
+                    builder.Append(@"\v");
+                    break;
+                case '\n':
+                    builder.Append(@"\n");
+                    break;
+                case '\r':
+                    builder.Append(@"\r");
+                    break;
+                case '\f':
+                    builder.Append(@"\f");
+                    break;
+                case '\b':
+                    builder.Append(@"\b");
+                    break;
+                case '\a':
+                    builder.Append(@"\a");
+                    break;
+                default:
+                    builder.Append(c);
+                    break;
+                }
+            return builder.ToString();
+        }
         private string ParseExpression(ASTNode node)
         {
             if (node is LiteralASTNode lan)
+            {
+                if (lan.Lexable is StringLiteral)
+                    return $"\"{ParseContainingCharacters(lan.Lexable.Representation)}\"";
                 return $"{lan.Lexable.Representation}";
+            }
             else if (node is AdditionOperation ao)
                 return $"{ParseExpression(ao.Left)}+{ParseExpression(ao.Right)}";
             else if (node is SubtractionOperation so)
@@ -86,6 +136,32 @@ namespace ModernSuite.Library.COutput
                 return $"{ParseExpression(poio.Child)}++";
             else if (node is PostfixDecrementOperation podo)
                 return $"{ParseExpression(podo.Child)}--";
+            else if (node is CastOperation co)
+                return $"({ParseType(co.Type)})({ParseExpression(co.Child)})";
+            else if (node is AssignmentOperation aso)
+                return $"{ParseExpression(aso.Left)}={ParseExpression(aso.Right)}";
+            else if (node is IncrementOperation ico)
+                return $"{ParseExpression(ico.Left)}+={ParseExpression(ico.Right)}";
+            else if (node is DecrementOperation dco)
+                return $"{ParseExpression(dco.Left)}-={ParseExpression(dco.Right)}";
+            else if (node is MultiplyAssignOperation mao)
+                return $"{ParseExpression(mao.Left)}*={ParseExpression(mao.Right)}";
+            else if (node is DivideAssignOperation dao)
+                return $"{ParseExpression(dao.Left)}/={ParseExpression(dao.Right)}";
+            else if (node is RemainderAssignOperation rao)
+                return $"{ParseExpression(rao.Left)}/={ParseExpression(rao.Right)}";
+            else if (node is AndAssignOperation aao)
+                return $"{ParseExpression(aao.Left)}&={ParseExpression(aao.Right)}";
+            else if (node is XorAssignOperation xao)
+                return $"{ParseExpression(xao.Left)}^={ParseExpression(xao.Right)}";
+            else if (node is OrAssignOperation oao)
+                return $"{ParseExpression(oao.Left)}|={ParseExpression(oao.Right)}";
+            else if (node is BRSAssignOperation brsao)
+                return $"{ParseExpression(brsao.Left)}>>={ParseExpression(brsao.Right)}";
+            else if (node is BRSAssignOperation blsao)
+                return $"{ParseExpression(blsao.Left)}<<={ParseExpression(blsao.Right)}";
+            else if (node is ConditionalOperation cdo)
+                return $"{ParseExpression(cdo.Condition)}?{ParseExpression(cdo.IfTrue)}:{ParseExpression(cdo.IfFalse)}";
             else if (node is SizeofOperation szo)
                 return szo.ToMeasure.Kind switch
                 {
@@ -106,13 +182,14 @@ namespace ModernSuite.Library.COutput
                     ModernTypeKind.Pointer => "sizeof(void *)",
                     ModernTypeKind.Array => "sizeof(void *)",
                     ModernTypeKind.Function => "sizeof(void *)",
+                    ModernTypeKind.String => "sizeof(void *)",  // sizeof(char *) is the same as sizeof(void *)
                     _ => throw new Exception("Missing Modern Type implementation")
                 };
             else
                 return "";
         }
 
-        private string ParseType(ModernType type, int ptrDepth = 0)
+        private string ParseType(ModernType type)
         {
             if (type is null)
             {
@@ -123,6 +200,8 @@ namespace ModernSuite.Library.COutput
             {
                 DiagnosticHandler.Add($"Usage of anonymous pointer", DiagnosticKind.Info);
             }
+            if (type.Kind == ModernTypeKind.Pointer && type.ChildType.Kind == ModernTypeKind.String)
+                return "char*";
             return type.Kind switch
             {
                 ModernTypeKind.Byte => "char",
@@ -139,8 +218,9 @@ namespace ModernSuite.Library.COutput
                 ModernTypeKind.Single => "float",
                 ModernTypeKind.Double => "double",
                 ModernTypeKind.Quad => "long double",
-                ModernTypeKind.Pointer => $"{ParseType(type.ChildType, ++ptrDepth)}*",
-                ModernTypeKind.Array => $"?{ParseType(type.ChildType, ++ptrDepth)}",
+                ModernTypeKind.Pointer => $"{ParseType(type.ChildType)}*",
+                ModernTypeKind.Array => $"?{ParseType(type.ChildType)}",
+                ModernTypeKind.String => "const char*",
             };
         }
 

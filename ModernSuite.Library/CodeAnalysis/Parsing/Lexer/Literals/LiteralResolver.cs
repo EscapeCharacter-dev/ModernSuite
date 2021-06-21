@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Text;
 
 namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals
 {
@@ -13,7 +14,6 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals
                 if (long.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var i64hResult))
                     return new IntLiteral { Value = i64hResult };
             }
-
             if (text.StartsWith("0b") || text.StartsWith("0B"))
             {
                 text = text.Remove(0, 2);
@@ -36,7 +36,6 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Lexer.Literals
                 if (valid)
                     return new IntLiteral { Value = k };
             }
-
             if (long.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var i64Result))
                 return new IntLiteral { Value = i64Result };
             else if (text == "true")

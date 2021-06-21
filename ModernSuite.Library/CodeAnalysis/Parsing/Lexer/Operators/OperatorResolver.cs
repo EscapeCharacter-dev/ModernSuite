@@ -45,6 +45,16 @@
                 "," => new CommaOperator(),
                 "@" => new AtOperator(),
                 "$" => new DollarOperator(),
+                "+=" => new PlusEqualOperator(),
+                "-=" => new MinusEqualOperator(),
+                "*=" => new StarEqualOperator(),
+                "/=" => new SlashEqualOperator(),
+                "%=" => new PercentEqualOperator(),
+                "<<=" => new LeftArrowsEqualOperator(),
+                ">>=" => new RightArrowsEqualOperator(),
+                "&=" => new AmpersandEqualOperator(),
+                "|=" => new PipeEqualOperator(),
+                "^=" => new CaretEqualOperator(),
                 _ => null
             };
         }

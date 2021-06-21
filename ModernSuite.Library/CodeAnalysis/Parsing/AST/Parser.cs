@@ -90,7 +90,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             else if (token is ParenthesisOpenOperator)
             {
                 Position++;
-                var tree = ParseLOrs();
+                var tree = ParseExpression();
                 if (Position >= Lexables.Count)
                 {
                     DiagnosticHandler.Add($"({token.Line},{token.Collumn}) Missing closing parenthesis (premature EOL).", DiagnosticKind.Error);
@@ -120,7 +120,14 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             else if (token is SizeofKeyword)
             {
                 Position++;
-                return new SizeofOperation { ToMeasure = ParseType() as ModernType };
+                var type = ParseType() as ModernType;
+                if (type.Kind == ModernTypeKind.Void)
+                {
+                    // ... No
+                    DiagnosticHandler.Add($"({token.Line},{token.Collumn}) void is incomplete type, therefore you cannot get it's size", DiagnosticKind.Error);
+                    return null;
+                }
+                return new SizeofOperation { ToMeasure = type };
             }
             else if (token is DollarOperator)
             {
@@ -135,7 +142,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     var parameters = new List<ASTNode>();
                     while (Current is not ParenthesisClosedOperator)
                     {
-                        parameters.Add(ParseLOrs());
+                        parameters.Add(ParseExpression());
                         if (Current is not CommaOperator)
                             break;
                         Position++;
@@ -426,6 +433,108 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             return left;
         }
 
+        private ASTNode ParseCast()
+        {
+            var left = ParseLOrs();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            if (Current is LargeArrowOperator)
+            {
+                Position++;
+                var right = ParseType();
+                left = new CastOperation { Child = left, Type = right as ModernType };
+            }
+            return left;
+        }
+
+        private ASTNode ParseConditional()
+        {
+            var cond = ParseCast();
+            if (Position >= Lexables.Count)
+            {
+                return cond;
+            }
+            while (Current is WhatOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return cond;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
+                    return null;
+                }
+                Position++;
+                var left = ParseConditional();
+                if (Current is not ColonOperator)
+                {
+                    if (Current is null)
+                    {
+                        DiagnosticHandler.Add($"Premature EOL after true expression in conditional expression (no source code position available)", DiagnosticKind.Error);
+                    }
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a colon after true expression in conditionnal expression", DiagnosticKind.Error);
+                    return null;
+                }
+                Position++;
+                var right = ParseConditional();
+                cond = new ConditionalOperation { Condition = cond, IfTrue = left, IfFalse = right };
+            }
+            return cond;
+        }
+
+        private ASTNode ParseAssign()
+        {
+            var left = ParseConditional();
+            if (Position >= Lexables.Count)
+            {
+                return left;
+            }
+            while (Current is EqualOperator ||
+                Current is PlusEqualOperator ||
+                Current is MinusEqualOperator ||
+                Current is StarEqualOperator ||
+                Current is SlashEqualOperator ||
+                Current is PercentEqualOperator ||
+                Current is LeftArrowsEqualOperator ||
+                Current is RightArrowsEqualOperator ||
+                Current is AmpersandEqualOperator ||
+                Current is PipeEqualOperator ||
+                Current is CaretEqualOperator)
+            {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
+                var op = Current;
+                if (op is not Operator)
+                {
+                    DiagnosticHandler.Add($"Expected an operator at ({Current.Line},{Current.Collumn})", DiagnosticKind.Error);
+                    return null;
+                }
+                Position++;
+                var right = ParseAssign();
+                left = op is EqualOperator ? new AssignmentOperation { Left = left, Right = right } :
+                    op is PlusEqualOperator ? new IncrementOperation { Left = left, Right = right } :
+                    op is MinusEqualOperator ? new DecrementOperation { Left = left, Right = right } :
+                    op is StarEqualOperator ? new MultiplyAssignOperation { Left = left, Right = right } :
+                    op is SlashEqualOperator ? new DivideAssignOperation { Left = left, Right = right } :
+                    op is PercentEqualOperator ? new RemainderAssignOperation { Left = left, Right = right } :
+                    op is LeftArrowsEqualOperator ? new BLSAssignOperation { Left = left, Right = right } :
+                    op is RightArrowsEqualOperator ? new BRSAssignOperation { Left = left, Right = right } :
+                    op is AmpersandEqualOperator ? new AndAssignOperation { Left = left, Right = right } :
+                    op is CaretEqualOperator ? new XorAssignOperation { Left = left, Right = right } :
+                    new OrAssignOperation { Left = left, Right = right };
+            }
+            return left;
+        }
+
+        private ASTNode ParseExpression()
+            => ParseAssign();
+
         private Semantic ParseStatement()
         {
             if (Current is not FunctionKeyword && Current is not VarKeyword && Current is not ConstKeyword &&
@@ -440,7 +549,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 if (Current is ParenthesisOpenOperator)
                 {
                     Position++;
-                    var expr = ParseLOrs();
+                    var expr = ParseExpression();
                     if (Current is not ParenthesisClosedOperator)
                     {
                         DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in if statement", DiagnosticKind.Error);
@@ -462,7 +571,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             else if (Current is GotoKeyword)
             {
                 Position++;
-                var objective = ParseLOrs();
+                var objective = ParseExpression();
                 if (objective is null)
                 {
                     DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Invalid goto syntax", DiagnosticKind.Error);
@@ -482,7 +591,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 if (Current is ParenthesisOpenOperator)
                 {
                     Position++;
-                    var expr = ParseLOrs();
+                    var expr = ParseExpression();
                     if (Current is not ParenthesisClosedOperator)
                     {
                         DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in if statement", DiagnosticKind.Error);
@@ -519,7 +628,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     return null;
                 }
                 Position++;
-                var expr = ParseLOrs();
+                var expr = ParseExpression();
                 if (Current is not ParenthesisClosedOperator)
                 {
                     DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Missing closing parenthesis in do...while statement", DiagnosticKind.Error);
@@ -566,14 +675,14 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 CurrentScope.ContinueAllowed = true;
                 var decl = ParseDeclaration();
                 Position++;
-                var expr = ParseLOrs();
+                var expr = ParseExpression();
                 if (Current is not SemicolonOperator)
                 {
                     DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
-                var expr2 = ParseLOrs();
+                var expr2 = ParseExpression();
                 if (Current is not ParenthesisClosedOperator)
                 {
                     DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a closing parenthesis in for statement", DiagnosticKind.Error);
@@ -611,7 +720,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     return null;
                 }
                 Position++;
-                var expr = ParseLOrs();
+                var expr = ParseExpression();
                 if (Current is not SemicolonOperator)
                 {
                     if (Current is null)
@@ -661,7 +770,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             }
             else
             {
-                var expr = ParseLOrs();
+                var expr = ParseExpression();
                 if (Current is not SemicolonOperator)
                 {
                     if (Current is null)
@@ -701,7 +810,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 }
                 Position++;
 
-                ast_value = ParseLOrs();
+                ast_value = ParseExpression();
             SkipAssign:
                 if (Current is not SemicolonOperator)
                 {
@@ -734,7 +843,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 }
                 Position++;
 
-                var ast_value = ParseLOrs();
+                var ast_value = ParseExpression();
                 if (Current is not SemicolonOperator)
                 {
                     DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
@@ -862,6 +971,8 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 type = new ModernType { Kind = ModernTypeKind.Quad, ChildType = null };
             else if (Current is VoidKeyword)
                 type = new ModernType { Kind = ModernTypeKind.Void, ChildType = null };
+            else if (Current is StringKeyword)
+                type = new ModernType { Kind = ModernTypeKind.String, ChildType = null };
             else if (Current is AtOperator)
             {
                 Position++;
@@ -870,7 +981,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             else if (Current is SquareBracketOpenOperator)
             {
                 Position++;
-                var expr = ParseLOrs();
+                var expr = ParseExpression();
                 if (Current is not SquareBracketClosedOperator)
                 {
                     DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Missing closing square bracket in array declaration", DiagnosticKind.Error);

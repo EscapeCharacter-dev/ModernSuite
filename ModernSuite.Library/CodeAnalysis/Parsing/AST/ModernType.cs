@@ -25,6 +25,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         Void,
         Function,
         Array,
+        String,
     }
     public sealed class ModernType : Semantic
     {
