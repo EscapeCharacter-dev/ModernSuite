@@ -122,6 +122,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             {
                 Position++;
                 var type = ParseType() as ModernType;
+                if (Current is null)
+                {
+                    DiagnosticHandler.Add($"({token.Line},{token.Collumn}) Invalid type", DiagnosticKind.Error);
+                    return null;
+                }
                 if (type.Kind == ModernTypeKind.Void)
                 {
                     // ... No
@@ -129,6 +134,28 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     return null;
                 }
                 return new SizeofOperation { ToMeasure = type };
+            }
+            else if (token is NameofKeyword)
+            {
+                Position++;
+                if (Current is not Identifier)
+                {
+                    if (Current is null)
+                    {
+                        DiagnosticHandler.Add($"Premature EOF", DiagnosticKind.Error);
+                        return null;
+                    }
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expeced an identifier", DiagnosticKind.Error);
+                    return null;
+                }
+                var ident = Current as Identifier;
+                Position++;
+                if (!CurrentScope.TryLookup(ident.Representation, out var decl))
+                {
+                    DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Unknown identifier {ident.Representation} in nameof statement", DiagnosticKind.Error);
+                    return null;
+                }
+                return new NameofOperation { Ident = ident.Representation };
             }
             else if (token is DollarOperator)
             {
@@ -151,7 +178,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Position++;
                     if (!CurrentScope.TryLookup(i.Representation, out var flooked_up))
                         DiagnosticHandler.Add($"({token.Line},{token.Collumn}) {i.Representation} is not declared", DiagnosticKind.Warn);
-                    if (flooked_up is not FuncDecl)
+                    if (flooked_up is not FuncDecl && flooked_up is not null)
                     {
                         DiagnosticHandler.Add($"({token.Line},{token.Collumn}) {i.Representation} is already declared but it is not a function", DiagnosticKind.Error);
                         return null;
@@ -478,8 +505,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             {
                 return left;
             }
-            if (Current is LargeArrowOperator)
+            while (Current is LargeArrowOperator)
             {
+                if (Position >= Lexables.Count)
+                {
+                    return left;
+                }
                 Position++;
                 var right = ParseType();
                 left = new CastOperation { Child = left, Type = right as ModernType };
@@ -576,7 +607,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         private Semantic ParseStatement()
         {
             if (Current is not FunctionKeyword && Current is not VarKeyword && Current is not ConstKeyword
-                && Current is not EnumKeyword &&
+                && Current is not EnumKeyword && Current is not StructKeyword &&
                 !CurrentScope.IsFunction)
             {
                 DiagnosticHandler.Add($"A statement or expression may only be used in a function body", DiagnosticKind.Error);
@@ -688,7 +719,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 PushScope();
                 while (Current is not BracketClosedOperator)
                     if (Current is null)
-                        DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected matching closed bracket operator", DiagnosticKind.Error);
+                        DiagnosticHandler.Add($"Expected matching closed bracket operator", DiagnosticKind.Error);
                     else
                         statements.Add(ParseSemantic());
                 Position++;
@@ -743,13 +774,18 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 var decl = ParseDeclaration();
                 if (Current is not SemicolonOperator)
                 {
-                    Console.WriteLine("Expected a semicolon");
+                    if (Current is null)
+                    {
+                        DiagnosticHandler.Add("Premature EOF", DiagnosticKind.Error);
+                        return null;
+                    }
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected a semicolon", DiagnosticKind.Error);
                     return null;
                 }
                 Position++;
                 return decl;
             }
-            else if (Current is FunctionKeyword)
+            else if (Current is FunctionKeyword || Current is StructKeyword)
                 return ParseDeclaration();
             else if (Current is ReturnKeyword)
             {
@@ -759,6 +795,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     return null;
                 }
                 Position++;
+                if (Current is SemicolonOperator)
+                {
+                    Position++;
+                    return new ReturnStatement { Expression = null };
+                }
                 var expr = ParseExpression();
                 if (Current is not SemicolonOperator)
                 {
@@ -920,6 +961,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     Position++;
                     if (Current is CommaOperator)
                         Position++;
+                    foreach (var previous in memberList)
+                        if (previous.Representation == memberIdent.Representation)
+                        {
+                            DiagnosticHandler.Add($"({memberIdent.Line},{memberIdent.Collumn}) Enum member already declared", DiagnosticKind.Error);
+                            return null;
+                        }
                     memberList.Add(memberIdent as Identifier);
                     members.Add(new EnumMemberDecl { Identifier = memberIdent.Representation });
                 }
@@ -934,6 +981,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
             else if (Current is FunctionKeyword)
             {
                 Position++;
+
                 var type = ParseType();
                 if (Current is not Identifier)
                 {
@@ -950,7 +998,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 PushScope();
                 CurrentScope.IsFunction = true;
-                var paramList = new List<Parameter>();
+                var paramList = new List<Declaration>();
                 while (Current is not ParenthesisClosedOperator)
                 {
                     if (Current is null)
@@ -958,7 +1006,6 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                         DiagnosticHandler.Add($"Premature EOL in function declaration", DiagnosticKind.Error);
                         return null;
                     }
-
                     var paramType = ParseType();
                     if (Current is not Identifier)
                     {
@@ -967,7 +1014,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     }
                     var paramIdent = Current as Identifier;
                     Position++;
-                    var parameter = new Parameter
+                    var parameter = new NoQualDecl
                     {
                         Identifier = paramIdent.Representation,
                         Type = paramType as ModernType
@@ -989,10 +1036,11 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                         Position++;
                 }
                 Position++;
+                CurrentScope.ParentInDeclaration = ident.Representation;
                 var code = ParseSemantic();
-                if (code is not ASTNode && code is not GroupStatement)
+                if (code is not GroupStatement)
                 {
-                    DiagnosticHandler.Add($"Expected a group statement (e.g. {{}}) or an expression", DiagnosticKind.Error);
+                    DiagnosticHandler.Add($"Expected a group statement (e.g. {{}})", DiagnosticKind.Error);
                     return null;
                 }
                 PopScope();
@@ -1009,6 +1057,70 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     return null;
                 }
                 return func;
+            }
+            else if (Current is StructKeyword)
+            {
+                Position++;
+                if (Current is not Identifier)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an identifier", DiagnosticKind.Error);
+                    return null;
+                }
+                var ident = Current;
+                Position++;
+                if (Current is not EqualOperator)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected '='", DiagnosticKind.Error);
+                    return null;
+                }
+                Position++;
+                var members = new List<NoQualDecl>();
+                var memberList = new List<string>();
+                while (Current is not SemicolonOperator)
+                {
+                    if (Current is null)
+                    {
+                        DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Expected a semicolon at end of structure template declaration", DiagnosticKind.Error);
+                        return null;
+                    }
+
+                    var memberType = ParseType();
+                    if (Current is not Identifier)
+                    {
+                        if (Current is null)
+                        {
+                            DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Premature EOL in member declaration", DiagnosticKind.Error);
+                            return null;
+                        }
+                        DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Expected a semicolon at end of structure template declaration", DiagnosticKind.Error);
+                        return null;
+                    }
+                    var memberIdent = Current as Identifier;
+                    Position++;
+                    if (Current is not CommaOperator && Current is not SemicolonOperator)
+                    {
+                        DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Expected a ',' or ';' at end of member declaration", DiagnosticKind.Error);
+                        return null;
+                    }
+                    if (memberList.Contains(memberIdent.Representation))
+                    {
+                        DiagnosticHandler.Add($"({memberIdent.Line},{memberIdent.Collumn}) Member {memberIdent.Representation} is already declared", DiagnosticKind.Error);
+                        return null;
+                    }
+                    members.Add(new NoQualDecl { Identifier = memberIdent.Representation, Type = memberType as ModernType });
+                    memberList.Add(memberIdent.Representation);
+                    if (Current is CommaOperator)
+                        Position++;
+                }
+                Position++;
+                var decl = new StructTemplateDecl { Members = members, Identifier = ident.Representation };
+                if (!CurrentScope.TryDeclare(decl))
+                {
+                    DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Cannot declare structure {ident.Representation} " +
+                        $"because a symbol with this name is already declared", DiagnosticKind.Error);
+                    return null;
+                }
+                return decl;
             }
             else
                 return null;
@@ -1068,6 +1180,22 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     ChildType = ParseType() as ModernType,
                     Optional = expr
                 };
+            }
+            else if (CurrentScope.TryLookup(Current.Representation, out var declaration))
+            {
+                if (declaration is StructTemplateDecl std)
+                {
+                    type = new ModernType
+                    {
+                        Kind = ModernTypeKind.Structure,
+                        Optional = std.Identifier
+                    };
+                }
+                else
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Unknown type token {Current.Representation}", DiagnosticKind.Error);
+                    return null;
+                }
             }
             else
             {

@@ -26,11 +26,12 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         Function,
         Array,
         String,
+        Structure,
     }
     public sealed class ModernType : Semantic
     {
         public ModernTypeKind Kind { get; init; }
         public ModernType ChildType { get; init; }
-        public ASTNode Optional { get; init; }
+        public object Optional { get; init; }
     }
 }

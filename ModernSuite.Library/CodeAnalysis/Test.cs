@@ -16,15 +16,18 @@ namespace ModernSuite.Library.CodeAnalysis
     {
         public void ParseTest()
         {
+            Parser parser;
+            ModernProgram semantic;
+            string ccode = "static void *__voidptr_storage;\n";
             while (true)
             {
                 DiagnosticHandler.Clear();
                 Console.Write($"{Environment.CurrentDirectory}> ");
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                var parser = new Parser(File.ReadAllText(Console.ReadLine()));
+                parser = new Parser(File.ReadAllText(Console.ReadLine()));
                 Console.ResetColor();
-                var semantic = parser.Parse();
-                var ccode = "static void *__voidptr_storage;\n";
+                semantic = parser.Parse();
+                ccode = "static void *__voidptr_storage;\n";
                 var should = DiagnosticHandler.Display();
                 if (!should)
                 {

@@ -11,6 +11,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Scoping
     public sealed class Scope
     {
         public Dictionary<string, Declaration> Symbols { get; init; } = new Dictionary<string, Declaration>();
+        public string ParentInDeclaration { get; set; }
 
         public Scope Parent { get; init; }
         private bool _isFunction = false;
@@ -43,8 +44,24 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.Scoping
             return true;
         }
 
+        public bool TryRemove(string ident)
+        {
+            if (Symbols.ContainsKey(ident))
+            {
+                Symbols.Remove(ident);
+                return true;
+            }
+            return false;
+        }
+
         public bool TryLookup(string ident, out Declaration declaration)
         {
+            if (ParentInDeclaration == ident)
+            {
+                DiagnosticHandler.Add($"Usage of a self call. Cannot lookup parameters.", DiagnosticKind.Info);
+                declaration = null;
+                return true;
+            }
             if (Symbols.TryGetValue(ident, out declaration))
                 return true;
             if (Parent is null)

@@ -71,6 +71,8 @@ namespace ModernSuite.Library.COutput
                     return $"{((decimal)fl.Value).ToString(CultureInfo.InvariantCulture)}";
                 return $"{lan.Lexable.Representation}";
             }
+            else if (node is NameofOperation noo)
+                return $"\"{noo.Ident}\"";
             else if (node is AdditionOperation ao)
                 return $"{ParseExpression(ao.Left)}+{ParseExpression(ao.Right)}";
             else if (node is SubtractionOperation so)
@@ -207,15 +209,15 @@ namespace ModernSuite.Library.COutput
                 return "char*";
             return type.Kind switch
             {
-                ModernTypeKind.Byte => "char",
+                ModernTypeKind.Byte => "unsigned char",
                 ModernTypeKind.SByte => "signed char",
-                ModernTypeKind.Short => "short",
+                ModernTypeKind.Short => "signed short",
                 ModernTypeKind.UShort => "unsigned short",
-                ModernTypeKind.Int => "int",
+                ModernTypeKind.Int => "signed int",
                 ModernTypeKind.UInt => "unsigned int",
-                ModernTypeKind.Least32 => "long",
+                ModernTypeKind.Least32 => "signed long",
                 ModernTypeKind.ULeast32 => "unsigned long",
-                ModernTypeKind.Long => "long long",
+                ModernTypeKind.Long => "signed long long",
                 ModernTypeKind.ULong => "unsigned long long",
                 ModernTypeKind.Void => "void",
                 ModernTypeKind.Single => "float",
@@ -224,6 +226,7 @@ namespace ModernSuite.Library.COutput
                 ModernTypeKind.Pointer => $"{ParseType(type.ChildType)}*",
                 ModernTypeKind.Array => $"?{ParseType(type.ChildType)}",
                 ModernTypeKind.String => "const char*",
+                ModernTypeKind.Structure => $"struct {type.Optional}",
             };
         }
 
@@ -273,7 +276,7 @@ namespace ModernSuite.Library.COutput
                 var isArray = type.StartsWith('?') ? true : false;
                 type = type.TrimStart('?');
                 return
-$"{type} {vdcl.Identifier}{(isArray ? $"[{ParseExpression(vdcl.Type.Optional)}]" : "")}={ParseExpression(vdcl.InitVal)};";
+$"{type} {vdcl.Identifier}{(isArray ? $"[{ParseExpression(vdcl.Type.Optional as ASTNode)}]" : "")}{(vdcl.InitVal != null ? "=" + ParseExpression(vdcl.InitVal) : "")};";
             }
 
             else if (semantic is ConstantDecl cd)
@@ -282,7 +285,7 @@ $"{type} {vdcl.Identifier}{(isArray ? $"[{ParseExpression(vdcl.Type.Optional)}]"
                 var isArray = type.StartsWith('?') ? true : false;
                 type = type.TrimStart('?');
                 return
-$"const {type} {cd.Identifier}{(isArray ? $"[{ParseExpression(cd.Type.Optional)}]" : "")}={ParseExpression(cd.InitVal)};";
+$"const {type} {cd.Identifier}{(isArray ? $"[{ParseExpression(cd.Type.Optional as ASTNode)}]" : "")}={ParseExpression(cd.InitVal)};";
             }
             else if (semantic is FuncDecl fd)
             {
@@ -310,6 +313,16 @@ $"const {type} {cd.Identifier}{(isArray ? $"[{ParseExpression(cd.Type.Optional)}
                 else
                     code = ParseStatements(fd.Code);
                 return $"{type} {fd.Identifier}({parameters}){code}";
+            }
+            else if (semantic is StructTemplateDecl std)
+            {
+                var text = $"struct {std.Identifier} {{";
+                foreach (var _member in std.Members)
+                {
+                    var member = _member as NoQualDecl;
+                    text += $"{ParseType(member.Type)} {member.Identifier};";
+                }
+                return text + "};";
             }
             else if (semantic is ForStatement fs)
                 return $"for({ParseStatements(fs.Declaration)}{ParseExpression(fs.FirstExpression)};" +

@@ -11,4 +11,10 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST.Operations
         public override IEnumerable<ASTNode> Children => Enumerable.Empty<ASTNode>();
         public ModernType ToMeasure { get; init; }
     }
+
+    public sealed class NameofOperation : ASTNode
+    {
+        public override IEnumerable<ASTNode> Children => Enumerable.Empty<ASTNode>();
+        public string Ident { get; init; }
+    }
 }
