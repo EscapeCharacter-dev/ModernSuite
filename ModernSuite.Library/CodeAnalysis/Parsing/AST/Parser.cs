@@ -607,7 +607,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         private Semantic ParseStatement()
         {
             if (Current is not FunctionKeyword && Current is not VarKeyword && Current is not ConstKeyword
-                && Current is not EnumKeyword && Current is not StructKeyword &&
+                && Current is not EnumKeyword && Current is not StructKeyword && Current is not PStructKeyword &&
                 !CurrentScope.IsFunction)
             {
                 DiagnosticHandler.Add($"A statement or expression may only be used in a function body", DiagnosticKind.Error);
@@ -785,7 +785,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 Position++;
                 return decl;
             }
-            else if (Current is FunctionKeyword || Current is StructKeyword)
+            else if (Current is FunctionKeyword || Current is StructKeyword || Current is PStructKeyword)
                 return ParseDeclaration();
             else if (Current is ReturnKeyword)
             {
@@ -1122,6 +1122,70 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                 }
                 return decl;
             }
+            else if (Current is PStructKeyword)
+            {
+                Position++;
+                if (Current is not Identifier)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected an identifier", DiagnosticKind.Error);
+                    return null;
+                }
+                var ident = Current;
+                Position++;
+                if (Current is not EqualOperator)
+                {
+                    DiagnosticHandler.Add($"({Current.Line},{Current.Collumn}) Expected '='", DiagnosticKind.Error);
+                    return null;
+                }
+                Position++;
+                var members = new List<NoQualDecl>();
+                var memberList = new List<string>();
+                while (Current is not SemicolonOperator)
+                {
+                    if (Current is null)
+                    {
+                        DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Expected a semicolon at end of structure template declaration", DiagnosticKind.Error);
+                        return null;
+                    }
+
+                    var memberType = ParseType();
+                    if (Current is not Identifier)
+                    {
+                        if (Current is null)
+                        {
+                            DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Premature EOL in member declaration", DiagnosticKind.Error);
+                            return null;
+                        }
+                        DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Expected a semicolon at end of structure template declaration", DiagnosticKind.Error);
+                        return null;
+                    }
+                    var memberIdent = Current as Identifier;
+                    Position++;
+                    if (Current is not CommaOperator && Current is not SemicolonOperator)
+                    {
+                        DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Expected a ',' or ';' at end of member declaration", DiagnosticKind.Error);
+                        return null;
+                    }
+                    if (memberList.Contains(memberIdent.Representation))
+                    {
+                        DiagnosticHandler.Add($"({memberIdent.Line},{memberIdent.Collumn}) Member {memberIdent.Representation} is already declared", DiagnosticKind.Error);
+                        return null;
+                    }
+                    members.Add(new NoQualDecl { Identifier = memberIdent.Representation, Type = memberType as ModernType });
+                    memberList.Add(memberIdent.Representation);
+                    if (Current is CommaOperator)
+                        Position++;
+                }
+                Position++;
+                var decl = new PStructTemplateDecl { Members = members, Identifier = ident.Representation };
+                if (!CurrentScope.TryDeclare(decl))
+                {
+                    DiagnosticHandler.Add($"({ident.Line},{ident.Collumn}) Cannot declare structure {ident.Representation} " +
+                        $"because a symbol with this name is already declared", DiagnosticKind.Error);
+                    return null;
+                }
+                return decl;
+            }
             else
                 return null;
         }
@@ -1189,6 +1253,14 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
                     {
                         Kind = ModernTypeKind.Structure,
                         Optional = std.Identifier
+                    };
+                }
+                else if (declaration is PStructTemplateDecl pstd)
+                {
+                    type = new ModernType
+                    {
+                        Kind = ModernTypeKind.PackedStructure,
+                        Optional = pstd.Identifier
                     };
                 }
                 else

@@ -27,6 +27,7 @@ namespace ModernSuite.Library.CodeAnalysis.Parsing.AST
         Array,
         String,
         Structure,
+        PackedStructure,
     }
     public sealed class ModernType : Semantic
     {

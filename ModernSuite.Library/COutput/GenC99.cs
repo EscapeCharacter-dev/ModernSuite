@@ -227,6 +227,7 @@ namespace ModernSuite.Library.COutput
                 ModernTypeKind.Array => $"?{ParseType(type.ChildType)}",
                 ModernTypeKind.String => "const char*",
                 ModernTypeKind.Structure => $"struct {type.Optional}",
+                ModernTypeKind.PackedStructure => $"struct {type.Optional}",
             };
         }
 
@@ -323,6 +324,16 @@ $"const {type} {cd.Identifier}{(isArray ? $"[{ParseExpression(cd.Type.Optional a
                     text += $"{ParseType(member.Type)} {member.Identifier};";
                 }
                 return text + "};";
+            }
+            else if (semantic is PStructTemplateDecl pstd)
+            {
+                var text = $"\n#pragma pack(push, 0)\nstruct {pstd.Identifier} {{";
+                foreach (var _member in pstd.Members)
+                {
+                    var member = _member as NoQualDecl;
+                    text += $"{ParseType(member.Type)} {member.Identifier};";
+                }
+                return text + "};\n#pragma pack(pop)\n";
             }
             else if (semantic is ForStatement fs)
                 return $"for({ParseStatements(fs.Declaration)}{ParseExpression(fs.FirstExpression)};" +
